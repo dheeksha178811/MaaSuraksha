@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { MobileDrawer } from '@/components/layout/MobileDrawer';
+import { MaaSurakshaAssistant } from '@/components/assistant';
 import { useSidebar } from '@/hooks/useSidebar';
 import { useMockAuth } from '@/hooks/useMockAuth';
 
@@ -38,6 +39,9 @@ export const AppLayout: React.FC = () => {
           <Outlet />
         </main>
       </div>
+
+      {/* Global MaaSuraksha Assistant */}
+      <MaaSurakshaAssistant />
     </div>
   );
 };
