@@ -1,0 +1,95 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* MaaSuraksha Design Tokens */
+  --color-primary-sandal: #B97863;
+  --color-deep-terracotta: #9E6252;
+  --color-soft-peach: #EAC7B8;
+  --color-very-soft-peach: #F3DED5;
+  --color-warm-ivory: #FCF8F4;
+  --color-warm-cream: #F7F0EA;
+  --color-deep-warm-brown: #4E3A33;
+  --color-muted-brown: #806D64;
+  --color-soft-sage: #DCE8DE;
+  --color-sage-text: #667B6B;
+  --color-white: #FFFFFF;
+  
+  --font-display: 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
+  --font-sans: 'Inter', 'DM Sans', system-ui, -apple-system, sans-serif;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    background-color: var(--color-warm-ivory);
+    color: var(--color-deep-warm-brown);
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-warm-ivory);
+    color: var(--color-deep-warm-brown);
+    min-height: 100vh;
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+
+  /* Custom subtle scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #EAC7B8;
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #B97863;
+  }
+}
+
+@layer components {
+  /* Subtle glass & warm surfaces */
+  .warm-surface {
+    background-color: #FFFFFF;
+    border: 1px solid rgba(234, 199, 184, 0.45);
+    box-shadow: 0 4px 20px -4px rgba(78, 58, 51, 0.04);
+  }
+
+  .warm-surface-muted {
+    background-color: #F7F0EA;
+    border: 1px solid rgba(234, 199, 184, 0.35);
+  }
+
+  .warm-border {
+    border-color: rgba(234, 199, 184, 0.5);
+  }
+
+  /* Text emphasis helper */
+  .text-title {
+    font-family: var(--font-display);
+    color: var(--color-deep-warm-brown);
+    font-weight: 600;
+  }
+
+  .text-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-muted-brown);
+    font-weight: 600;
+  }
+}
+
+/* Micro-transitions */
+.transition-smooth {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
