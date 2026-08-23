@@ -15,9 +15,11 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
-import { mockMother, mockChild, mockDoctor, mockHospital, mockAppointments, mockVaccinations } from '@/data/mockData';
+import { mockMother, mockChild, mockDoctor, mockHospital, mockVaccinations } from '@/data/mockData';
 import { CARE_STAGE_DETAILS, CareStage } from '@/data/careJourneyMockData';
 import { setCareStage, useCareStage } from '@/hooks/useCareStage';
+import { getUpcomingAppointmentsForMother } from '@/data/motherAppointmentsMockData';
+import { getMotherAppointmentStatusLabel } from '@/pages/appointments/motherAppointmentUi';
 
 const careStageOptions = (Object.keys(CARE_STAGE_DETAILS) as CareStage[]).map((stage) => ({
   value: stage,
@@ -31,6 +33,7 @@ export const MotherDashboardPreview: React.FC = () => {
   const careStage = useCareStage();
   const stageDetails = CARE_STAGE_DETAILS[careStage];
   const pregnancyActive = isPregnancyStage(careStage);
+  const upcomingAppointments = getUpcomingAppointmentsForMother(mockMother.id).slice(0, 3);
 
   return (
     <div className="space-y-6">
@@ -155,38 +158,65 @@ export const MotherDashboardPreview: React.FC = () => {
             </div>
 
             <div className="pt-4 space-y-3">
-              {(pregnancyActive ? [{ id: 'pregnancy-event', title: stageDetails.nextEvent, doctorName: mockDoctor.name, location: mockHospital.name, date: 'Planned', time: 'Review in journey', status: 'upcoming', notes: stageDetails.focus }] : mockAppointments).map((apt) => (
-                <div
-                  key={apt.id}
-                  className="p-4 rounded-2xl bg-warm-cream/50 border border-sandal-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                >
+              {pregnancyActive ? (
+                <div className="p-4 rounded-2xl bg-warm-cream/50 border border-sandal-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="font-display font-semibold text-warm-brown text-base">
-                        {apt.title}
+                        {stageDetails.nextEvent}
                       </span>
-                      <Badge variant={apt.status === 'upcoming' ? 'sandal' : 'sage'} size="sm">
-                        {apt.status === 'upcoming' ? 'Scheduled' : 'Completed'}
-                      </Badge>
+                      <Badge variant="sandal" size="sm">Scheduled</Badge>
                     </div>
                     <p className="text-xs text-warm-muted">
-                      With {apt.doctorName} • {apt.location}
+                      With {mockDoctor.name} • {mockHospital.name}
                     </p>
-                    {apt.notes && (
-                      <p className="text-xs text-sandal-700 italic pt-1">
-                        "{apt.notes}"
-                      </p>
-                    )}
+                    <p className="text-xs text-sandal-700 italic pt-1">
+                      "{stageDetails.focus}"
+                    </p>
                   </div>
-
                   <div className="sm:text-right shrink-0">
-                    <span className="text-sm font-semibold text-warm-brown block">
-                      {apt.date}
-                    </span>
-                    <span className="text-xs text-warm-muted">{apt.time}</span>
+                    <span className="text-sm font-semibold text-warm-brown block">Planned</span>
+                    <span className="text-xs text-warm-muted">Review in journey</span>
                   </div>
                 </div>
-              ))}
+              ) : upcomingAppointments.length === 0 ? (
+                <p className="text-sm text-warm-muted py-2">
+                  No upcoming appointments. Visit the Appointments page to request one.
+                </p>
+              ) : (
+                upcomingAppointments.map((apt) => (
+                  <div
+                    key={apt.appointmentId}
+                    className="p-4 rounded-2xl bg-warm-cream/50 border border-sandal-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-display font-semibold text-warm-brown text-base">
+                          {apt.title}
+                        </span>
+                        <Badge variant={apt.status === 'upcoming' ? 'sandal' : 'peach'} size="sm">
+                          {getMotherAppointmentStatusLabel(apt.status)}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-warm-muted">
+                        With {apt.doctorName} • {apt.hospitalName}
+                      </p>
+                      {apt.reason && (
+                        <p className="text-xs text-sandal-700 italic pt-1">
+                          "{apt.reason}"
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="sm:text-right shrink-0">
+                      <span className="text-sm font-semibold text-warm-brown block">
+                        {apt.date}
+                      </span>
+                      <span className="text-xs text-warm-muted">{apt.time}</span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </Card>
         </div>

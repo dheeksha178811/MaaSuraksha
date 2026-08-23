@@ -52,7 +52,7 @@ export const MOTHER_NAV_ITEMS: NavItem[] = [
     href: '/mother/appointments',
     icon: CalendarCheck,
     badge: '1',
-    isPlaceholder: true,
+    isPlaceholder: false,
   },
   {
     title: 'Medications',
