@@ -77,7 +77,7 @@ export const MOTHER_NAV_ITEMS: NavItem[] = [
     href: '/mother/vaccinations',
     icon: Syringe,
     badge: 'Due',
-    isPlaceholder: true,
+    isPlaceholder: false,
   },
   {
     title: 'Growth & Milestones',

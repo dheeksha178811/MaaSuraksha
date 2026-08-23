@@ -9,6 +9,7 @@ import { PregnancyPage } from '@/pages/pregnancy/PregnancyPage';
 import { ReportsPage } from '@/pages/reports/ReportsPage';
 import { MotherAppointmentsPage } from '@/pages/appointments/MotherAppointmentsPage';
 import { MotherMedicationsPage } from '@/pages/medications/MotherMedicationsPage';
+import { MotherVaccinationsPage } from '@/pages/vaccinations/MotherVaccinationsPage';
 import { DoctorHospitalUploadFoundation } from '@/pages/reports/DoctorHospitalUploadFoundation';
 import { HospitalDashboardPlaceholder } from '@/pages/dashboard/HospitalDashboardPlaceholder';
 import { AdminDashboardPlaceholder } from '@/pages/dashboard/AdminDashboardPlaceholder';
@@ -45,7 +46,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/mother/profile" element={<PlaceholderPage />} />
         <Route path="/mother/child" element={<PlaceholderPage />} />
         <Route path="/mother/timeline" element={<PlaceholderPage />} />
-        <Route path="/mother/vaccinations" element={<PlaceholderPage />} />
+        <Route path="/mother/vaccinations" element={<MotherVaccinationsPage />} />
         <Route path="/mother/schedule" element={<PlaceholderPage />} />
         <Route path="/mother/appointments" element={<MotherAppointmentsPage />} />
         <Route path="/mother/messages" element={<PlaceholderPage />} />
