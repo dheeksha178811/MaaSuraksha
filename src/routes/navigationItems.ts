@@ -58,7 +58,7 @@ export const MOTHER_NAV_ITEMS: NavItem[] = [
     title: 'Medications',
     href: '/mother/medications',
     icon: Pill,
-    isPlaceholder: true,
+    isPlaceholder: false,
   },
   {
     title: 'My Care',

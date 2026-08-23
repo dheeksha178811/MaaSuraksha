@@ -4,6 +4,7 @@ export * from './child';
 export * from './doctor';
 export * from './hospital';
 export * from './appointment';
+export * from './medication';
 export * from './vaccination';
 export * from './notification';
 export * from './navigation';
