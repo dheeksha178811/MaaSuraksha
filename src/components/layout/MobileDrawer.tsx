@@ -68,7 +68,7 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) =
 
             return (
               <NavLink
-                key={item.href}
+                key={item.title}
                 to={item.href}
                 className={cn(
                   'flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium transition-colors',
@@ -100,7 +100,7 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) =
             const Icon = item.icon;
             return (
               <NavLink
-                key={item.href}
+                key={item.title}
                 to={item.href}
                 className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-warm-muted hover:bg-white/60 hover:text-sandal-900 transition-colors"
               >

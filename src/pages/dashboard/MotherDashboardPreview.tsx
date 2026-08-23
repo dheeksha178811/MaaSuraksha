@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import {
   Baby,
+  HeartPulse,
   Stethoscope,
   Syringe,
   CalendarCheck,
@@ -13,21 +14,39 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { Select } from '@/components/ui/Select';
 import { mockMother, mockChild, mockDoctor, mockHospital, mockAppointments, mockVaccinations } from '@/data/mockData';
+import { CARE_STAGE_DETAILS, CareStage } from '@/data/careJourneyMockData';
+import { setCareStage, useCareStage } from '@/hooks/useCareStage';
+
+const careStageOptions = (Object.keys(CARE_STAGE_DETAILS) as CareStage[]).map((stage) => ({
+  value: stage,
+  label: CARE_STAGE_DETAILS[stage].label,
+}));
+
+const isPregnancyStage = (stage: CareStage) =>
+  stage === 'EARLY_PREGNANCY' || stage === 'ANTENATAL_CARE' || stage === 'LATE_PREGNANCY';
 
 export const MotherDashboardPreview: React.FC = () => {
+  const careStage = useCareStage();
+  const stageDetails = CARE_STAGE_DETAILS[careStage];
+  const pregnancyActive = isPregnancyStage(careStage);
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
       <PageHeader
         title={`Welcome, ${mockMother.name}`}
-        subtitle="Your personalized maternal and infant care space for postpartum week 5."
-        badge={<Badge variant="sage">Postpartum Recovery</Badge>}
+        subtitle={stageDetails.dashboardSubtitle}
+        badge={<Badge variant="sage">{stageDetails.label}</Badge>}
         actions={
-          <div className="flex items-center gap-2">
-            <Badge variant="warm" size="md">
-              Hospital: {mockHospital.name}
-            </Badge>
+          <div className="w-full sm:w-56">
+            <Select
+              aria-label="Current care stage"
+              options={careStageOptions}
+              value={careStage}
+              onChange={(event) => setCareStage(event.target.value as CareStage)}
+            />
           </div>
         }
       />
@@ -36,7 +55,7 @@ export const MotherDashboardPreview: React.FC = () => {
       <div className="p-4 rounded-2xl bg-peach-verySoft/80 border border-sandal-200/80 flex items-start gap-3 shadow-subtle">
         <Sparkles className="w-5 h-5 text-sandal-600 shrink-0 mt-0.5" />
         <div className="flex-1 text-xs sm:text-sm text-sandal-900 leading-relaxed">
-          <strong>Module 0 Preview:</strong> You are viewing the foundational layout of the Mother Workspace. Full interactive modules (Profile, Immunizations, Nutrition, Schedules, Documents) will be integrated in subsequent modules.
+          <strong>Care focus:</strong> {stageDetails.focus}. {stageDetails.reminder}
         </div>
       </div>
 
@@ -46,22 +65,22 @@ export const MotherDashboardPreview: React.FC = () => {
         <Card variant="default" padding="md" className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="w-10 h-10 rounded-xl bg-peach-soft text-sandal-700 flex items-center justify-center">
-              <Baby className="w-5 h-5" />
+              {pregnancyActive ? <HeartPulse className="w-5 h-5" /> : <Baby className="w-5 h-5" />}
             </div>
-            <Badge variant="sandal" size="sm">{mockChild.ageDisplay}</Badge>
+            <Badge variant="sandal" size="sm">{pregnancyActive ? 'Week 32' : mockChild.ageDisplay}</Badge>
           </div>
           <div>
             <h4 className="font-display text-lg font-bold text-warm-brown">
-              {mockChild.name}
+              {pregnancyActive ? 'Current pregnancy' : mockChild.name}
             </h4>
             <p className="text-xs text-warm-muted mt-0.5">
-              Born at {mockChild.birthHospital} • Weight: {mockChild.currentWeightKg} kg
+              {pregnancyActive ? 'Expected delivery: July 25, 2026' : `Born at ${mockChild.birthHospital} • Weight: ${mockChild.currentWeightKg} kg`}
             </p>
           </div>
           <div className="pt-2 border-t border-sandal-100 flex items-center justify-between text-xs">
-            <span className="text-warm-muted">Blood Group: {mockChild.bloodGroup}</span>
-            <Link to="/mother/child" className="text-sandal-700 font-semibold hover:underline flex items-center gap-0.5">
-              <span>View Profile</span>
+            <span className="text-warm-muted">{pregnancyActive ? 'Pregnancy progress' : `Blood Group: ${mockChild.bloodGroup}`}</span>
+            <Link to="/mother/pregnancy" className="text-sandal-700 font-semibold hover:underline flex items-center gap-0.5">
+              <span>{pregnancyActive ? 'View journey' : 'Pregnancy history'}</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -102,16 +121,16 @@ export const MotherDashboardPreview: React.FC = () => {
           </div>
           <div>
             <h4 className="font-display text-lg font-bold text-warm-brown">
-              {mockVaccinations[1]?.vaccineName || 'Pentavalent-1'}
+              {pregnancyActive ? stageDetails.nextEvent : mockVaccinations[1]?.vaccineName || 'Pentavalent-1'}
             </h4>
             <p className="text-xs text-warm-muted mt-0.5">
-              Target Milestone: {mockVaccinations[1]?.targetAgeDescription} (Aug 29)
+              {pregnancyActive ? 'Upcoming care event' : `Target Milestone: ${mockVaccinations[1]?.targetAgeDescription} (Aug 29)`}
             </p>
           </div>
           <div className="pt-2 border-t border-sandal-100 flex items-center justify-between text-xs">
-            <span className="text-sage-text font-medium">Routine Primary Dose</span>
-            <Link to="/mother/vaccinations" className="text-sandal-700 font-semibold hover:underline flex items-center gap-0.5">
-              <span>Schedule</span>
+            <span className="text-sage-text font-medium">{pregnancyActive ? 'Care plan' : 'Routine Primary Dose'}</span>
+            <Link to={pregnancyActive ? '/mother/pregnancy' : '/mother/vaccinations'} className="text-sandal-700 font-semibold hover:underline flex items-center gap-0.5">
+              <span>{pregnancyActive ? 'Open' : 'Schedule'}</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -127,7 +146,7 @@ export const MotherDashboardPreview: React.FC = () => {
               <div className="flex items-center gap-2.5">
                 <CalendarCheck className="w-5 h-5 text-sandal-600" />
                 <h3 className="font-display text-xl font-bold text-warm-brown">
-                  Upcoming Consultations
+                  {pregnancyActive ? 'Pregnancy care plan' : 'Upcoming Consultations'}
                 </h3>
               </div>
               <Link to="/mother/appointments">
@@ -136,7 +155,7 @@ export const MotherDashboardPreview: React.FC = () => {
             </div>
 
             <div className="pt-4 space-y-3">
-              {mockAppointments.map((apt) => (
+              {(pregnancyActive ? [{ id: 'pregnancy-event', title: stageDetails.nextEvent, doctorName: mockDoctor.name, location: mockHospital.name, date: 'Planned', time: 'Review in journey', status: 'upcoming', notes: stageDetails.focus }] : mockAppointments).map((apt) => (
                 <div
                   key={apt.id}
                   className="p-4 rounded-2xl bg-warm-cream/50 border border-sandal-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
@@ -184,16 +203,16 @@ export const MotherDashboardPreview: React.FC = () => {
 
             <div className="space-y-3">
               <div className="p-3 rounded-xl bg-warm-ivory border border-sandal-100">
-                <span className="text-xs font-semibold text-sandal-800 block">Postnatal Nutrition</span>
+                <span className="text-xs font-semibold text-sandal-800 block">{pregnancyActive ? 'Pregnancy wellness' : 'Postnatal Nutrition'}</span>
                 <p className="text-xs text-warm-muted mt-1 leading-relaxed">
-                  Focus on calcium-rich ragi, lentils, leafy greens, and adequate hydration to support lactation.
+                  {pregnancyActive ? 'Keep your scheduled tests, appointments, rest, and hydration routine visible in one calm care plan.' : 'Focus on calcium-rich ragi, lentils, leafy greens, and adequate hydration to support lactation.'}
                 </p>
               </div>
 
               <div className="p-3 rounded-xl bg-warm-ivory border border-sandal-100">
-                <span className="text-xs font-semibold text-sandal-800 block">Gentle Recovery</span>
+                <span className="text-xs font-semibold text-sandal-800 block">{pregnancyActive ? 'Current milestone' : 'Gentle Recovery'}</span>
                 <p className="text-xs text-warm-muted mt-1 leading-relaxed">
-                  Avoid heavy lifting during early weeks. Take short calming walks and rest whenever the baby sleeps.
+                  {pregnancyActive ? `${stageDetails.progress}% of the pregnancy journey is represented in this mock record.` : 'Avoid heavy lifting during early weeks. Take short calming walks and rest whenever the baby sleeps.'}
                 </p>
               </div>
             </div>
@@ -201,7 +220,7 @@ export const MotherDashboardPreview: React.FC = () => {
             <div className="pt-2">
               <Link to="/mother/nutrition">
                 <Button variant="outline" size="sm" fullWidth>
-                  Explore Nutrition Guidance
+                  {pregnancyActive ? 'View Pregnancy Journey' : 'Explore Nutrition Guidance'}
                 </Button>
               </Link>
             </div>

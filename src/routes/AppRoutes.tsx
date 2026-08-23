@@ -5,6 +5,7 @@ import { AppLayout } from '@/layouts/AppLayout';
 import { LandingPage } from '@/pages/landing/LandingPage';
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { MotherDashboardPreview } from '@/pages/dashboard/MotherDashboardPreview';
+import { PregnancyPage } from '@/pages/pregnancy/PregnancyPage';
 import { DoctorDashboardPlaceholder } from '@/pages/dashboard/DoctorDashboardPlaceholder';
 import { HospitalDashboardPlaceholder } from '@/pages/dashboard/HospitalDashboardPlaceholder';
 import { AdminDashboardPlaceholder } from '@/pages/dashboard/AdminDashboardPlaceholder';
@@ -24,6 +25,7 @@ export const AppRoutes: React.FC = () => {
       <Route element={<AppLayout />}>
         {/* Mother Space Routes */}
         <Route path="/mother/dashboard" element={<MotherDashboardPreview />} />
+        <Route path="/mother/pregnancy" element={<PregnancyPage />} />
         <Route path="/mother/profile" element={<PlaceholderPage />} />
         <Route path="/mother/child" element={<PlaceholderPage />} />
         <Route path="/mother/timeline" element={<PlaceholderPage />} />
@@ -36,6 +38,11 @@ export const AppRoutes: React.FC = () => {
         <Route path="/mother/documents" element={<PlaceholderPage />} />
         <Route path="/mother/doctor" element={<PlaceholderPage />} />
         <Route path="/mother/settings" element={<PlaceholderPage />} />
+        <Route path="/mother/medications" element={<PlaceholderPage />} />
+        <Route path="/mother/growth" element={<PlaceholderPage />} />
+        <Route path="/mother/hospital" element={<PlaceholderPage />} />
+        <Route path="/mother/notifications" element={<PlaceholderPage />} />
+        <Route path="/mother/qr" element={<PlaceholderPage />} />
 
         {/* Doctor Space Routes */}
         <Route path="/doctor/dashboard" element={<DoctorDashboardPlaceholder />} />

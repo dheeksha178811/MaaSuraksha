@@ -81,7 +81,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           return (
             <NavLink
-              key={item.href}
+              key={item.title}
               to={item.href}
               title={isCollapsed ? item.title : undefined}
               className={({ isActive: linkActive }) =>
@@ -133,7 +133,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           return (
             <NavLink
-              key={item.href}
+              key={item.title}
               to={item.href}
               title={isCollapsed ? item.title : undefined}
               className={cn(
