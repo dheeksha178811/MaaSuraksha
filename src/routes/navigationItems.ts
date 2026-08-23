@@ -89,7 +89,7 @@ export const MOTHER_NAV_ITEMS: NavItem[] = [
     title: 'My Hospital',
     href: '/mother/hospital',
     icon: BriefcaseMedical,
-    isPlaceholder: true,
+    isPlaceholder: false,
   },
   {
     title: 'My Doctor',

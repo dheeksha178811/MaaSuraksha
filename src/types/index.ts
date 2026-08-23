@@ -9,6 +9,7 @@ export * from './vaccination';
 export * from './growth';
 export * from './nutrition';
 export * from './timeline';
+export * from './hospitalCare';
 export * from './notification';
 export * from './navigation';
 export * from './assistant';
