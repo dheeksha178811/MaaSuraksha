@@ -21,6 +21,8 @@ import { DoctorCarePlansPage } from '@/pages/doctor/DoctorCarePlansPage';
 import { DoctorHospitalPage } from '@/pages/doctor/DoctorHospitalPage';
 import { DoctorProfilePage } from '@/pages/doctor/DoctorProfilePage';
 import { DoctorPlaceholderPage } from '@/pages/doctor/DoctorPlaceholderPage';
+import { HospitalPlaceholderPage } from '@/pages/hospital/HospitalPlaceholderPage';
+import { AdminPlaceholderPage } from '@/pages/admin/AdminPlaceholderPage';
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -68,12 +70,30 @@ export const AppRoutes: React.FC = () => {
         <Route path="/doctor/profile" element={<DoctorProfilePage />} />
         <Route path="/doctor/upload-report" element={<DoctorHospitalUploadFoundation />} />
 
-        {/* Hospital Space Routes */}
+        {/* Hospital Space Routes (placeholder/shell only — full Module 6 not yet implemented) */}
         <Route path="/hospital/dashboard" element={<HospitalDashboardPlaceholder />} />
+        <Route path="/hospital/patients" element={<HospitalPlaceholderPage />} />
+        <Route path="/hospital/deliveries" element={<HospitalPlaceholderPage />} />
+        <Route path="/hospital/neonatal-care" element={<HospitalPlaceholderPage />} />
+        <Route path="/hospital/beds" element={<HospitalPlaceholderPage />} />
+        <Route path="/hospital/vaccines" element={<HospitalPlaceholderPage />} />
+        <Route path="/hospital/referrals" element={<HospitalPlaceholderPage />} />
+        <Route path="/hospital/reports" element={<HospitalPlaceholderPage />} />
+        <Route path="/hospital/profile" element={<HospitalPlaceholderPage />} />
+        <Route path="/hospital/settings" element={<HospitalPlaceholderPage />} />
         <Route path="/hospital/upload-report" element={<DoctorHospitalUploadFoundation />} />
 
-        {/* Admin Space Routes */}
+        {/* Admin Space Routes (placeholder/shell only — full Module 7 not yet implemented) */}
         <Route path="/admin/dashboard" element={<AdminDashboardPlaceholder />} />
+        <Route path="/admin/program-overview" element={<AdminPlaceholderPage />} />
+        <Route path="/admin/facilities" element={<AdminPlaceholderPage />} />
+        <Route path="/admin/maternal-analytics" element={<AdminPlaceholderPage />} />
+        <Route path="/admin/immunization" element={<AdminPlaceholderPage />} />
+        <Route path="/admin/high-risk-monitoring" element={<AdminPlaceholderPage />} />
+        <Route path="/admin/reports" element={<AdminPlaceholderPage />} />
+        <Route path="/admin/alerts" element={<AdminPlaceholderPage />} />
+        <Route path="/admin/settings" element={<AdminPlaceholderPage />} />
+        <Route path="/admin/profile" element={<AdminPlaceholderPage />} />
       </Route>
 
       {/* Catch-all Not Found Route */}

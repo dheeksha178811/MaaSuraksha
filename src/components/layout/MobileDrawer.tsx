@@ -2,12 +2,7 @@ import React, { useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { X, HeartHandshake } from 'lucide-react';
 import { cn } from '@/utils/cn';
-import {
-  MOTHER_NAV_ITEMS,
-  BOTTOM_NAV_ITEMS,
-  DOCTOR_NAV_ITEMS,
-  DOCTOR_BOTTOM_NAV_ITEMS,
-} from '@/routes/navigationItems';
+import { getNavConfigForRole } from '@/routes/navigationItems';
 import { Badge } from '@/components/ui/Badge';
 import { IconButton } from '@/components/ui/IconButton';
 import { useMockAuth } from '@/hooks/useMockAuth';
@@ -20,10 +15,11 @@ export interface MobileDrawerProps {
 export const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) => {
   const location = useLocation();
   const { role } = useMockAuth();
-  const isDoctor = role === 'doctor';
-  const navItems = isDoctor ? DOCTOR_NAV_ITEMS : MOTHER_NAV_ITEMS;
-  const bottomNavItems = isDoctor ? DOCTOR_BOTTOM_NAV_ITEMS : BOTTOM_NAV_ITEMS;
-  const sectionLabel = isDoctor ? 'Clinical Navigation' : 'Care Navigation';
+  const {
+    items: navItems,
+    bottomItems: bottomNavItems,
+    mobileSectionLabel: sectionLabel,
+  } = getNavConfigForRole(role);
 
   useEffect(() => {
     onClose();

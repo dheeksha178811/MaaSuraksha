@@ -24,9 +24,9 @@ export const AdminDashboardPlaceholder: React.FC = () => {
 
       <EmptyState
         icon={ShieldCheck}
-        moduleBadge="Module 7 – Upcoming Admin Module"
+        moduleBadge="Module 7 — Upcoming Admin Module"
         title="Your MaaSuraksha Administrator Workspace is being prepared"
-        description="District immunization coverage analytics, maternal mortality reduction metrics, high-risk tracking alerts, and facility performance reports will be implemented in Module 7."
+        description="Future Module 7 will cover: district immunization coverage analytics • maternal mortality/reduction metrics • high-risk pregnancy tracking and alerts • facility performance reports • program-level maternal and child health oversight."
         action={
           <Link to="/mother/dashboard">
             <Button variant="secondary" size="md">

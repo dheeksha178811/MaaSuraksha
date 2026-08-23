@@ -19,9 +19,14 @@ import {
   ClipboardList,
   MessageCircle,
   Building2,
-  UserCircle
+  UserCircle,
+  HeartPulse,
+  BedDouble,
+  ArrowRightLeft,
+  AlertTriangle,
+  LayoutGrid
 } from 'lucide-react';
-import { NavItem } from '@/types';
+import { NavItem, UserRole } from '@/types';
 
 export const MOTHER_NAV_ITEMS: NavItem[] = [
   {
@@ -192,3 +197,189 @@ export const DOCTOR_BOTTOM_NAV_ITEMS: NavItem[] = [
     isPlaceholder: false,
   },
 ];
+
+// Hospital and Admin are placeholder/shell roles for future Module 6 and Module 7.
+// Their nav items intentionally point to lightweight placeholder routes only.
+
+export const HOSPITAL_NAV_ITEMS: NavItem[] = [
+  {
+    title: 'Dashboard',
+    href: '/hospital/dashboard',
+    icon: LayoutDashboard,
+    isPlaceholder: false,
+  },
+  {
+    title: 'Patients / Mothers',
+    href: '/hospital/patients',
+    icon: Users,
+    isPlaceholder: true,
+  },
+  {
+    title: 'Deliveries',
+    href: '/hospital/deliveries',
+    icon: Baby,
+    isPlaceholder: true,
+  },
+  {
+    title: 'Neonatal Care',
+    href: '/hospital/neonatal-care',
+    icon: HeartPulse,
+    isPlaceholder: true,
+  },
+  {
+    title: 'Beds',
+    href: '/hospital/beds',
+    icon: BedDouble,
+    isPlaceholder: true,
+  },
+  {
+    title: 'Vaccines / Cold Chain',
+    href: '/hospital/vaccines',
+    icon: Syringe,
+    isPlaceholder: true,
+  },
+  {
+    title: 'Referrals',
+    href: '/hospital/referrals',
+    icon: ArrowRightLeft,
+    isPlaceholder: true,
+  },
+  {
+    title: 'Reports',
+    href: '/hospital/reports',
+    icon: FileText,
+    isPlaceholder: true,
+  },
+  {
+    title: 'My Hospital',
+    href: '/hospital/profile',
+    icon: Building2,
+    isPlaceholder: true,
+  },
+  {
+    title: 'Settings',
+    href: '/hospital/settings',
+    icon: Settings,
+    isPlaceholder: true,
+  },
+];
+
+export const HOSPITAL_BOTTOM_NAV_ITEMS: NavItem[] = [
+  {
+    title: 'Logout',
+    href: '/auth/login',
+    icon: LogOut,
+    isPlaceholder: false,
+  },
+];
+
+export const ADMIN_NAV_ITEMS: NavItem[] = [
+  {
+    title: 'Dashboard',
+    href: '/admin/dashboard',
+    icon: LayoutDashboard,
+    isPlaceholder: false,
+  },
+  {
+    title: 'Program Overview',
+    href: '/admin/program-overview',
+    icon: LayoutGrid,
+    isPlaceholder: true,
+  },
+  {
+    title: 'Facilities',
+    href: '/admin/facilities',
+    icon: Building2,
+    isPlaceholder: true,
+  },
+  {
+    title: 'Maternal Analytics',
+    href: '/admin/maternal-analytics',
+    icon: TrendingUp,
+    isPlaceholder: true,
+  },
+  {
+    title: 'Immunization',
+    href: '/admin/immunization',
+    icon: Syringe,
+    isPlaceholder: true,
+  },
+  {
+    title: 'High-Risk Monitoring',
+    href: '/admin/high-risk-monitoring',
+    icon: AlertTriangle,
+    isPlaceholder: true,
+  },
+  {
+    title: 'Reports',
+    href: '/admin/reports',
+    icon: FileText,
+    isPlaceholder: true,
+  },
+  {
+    title: 'Alerts',
+    href: '/admin/alerts',
+    icon: Bell,
+    isPlaceholder: true,
+  },
+  {
+    title: 'Settings',
+    href: '/admin/settings',
+    icon: Settings,
+    isPlaceholder: true,
+  },
+];
+
+export const ADMIN_BOTTOM_NAV_ITEMS: NavItem[] = [
+  {
+    title: 'Logout',
+    href: '/auth/login',
+    icon: LogOut,
+    isPlaceholder: false,
+  },
+];
+
+export interface RoleNavConfig {
+  items: NavItem[];
+  bottomItems: NavItem[];
+  sectionLabel: string;
+  mobileSectionLabel: string;
+}
+
+/**
+ * Single source of truth for which nav set + section label a role renders.
+ * Sidebar and MobileDrawer both read through this so role branching lives in one place.
+ */
+export const getNavConfigForRole = (role: UserRole): RoleNavConfig => {
+  switch (role) {
+    case 'doctor':
+      return {
+        items: DOCTOR_NAV_ITEMS,
+        bottomItems: DOCTOR_BOTTOM_NAV_ITEMS,
+        sectionLabel: 'Clinical Portal',
+        mobileSectionLabel: 'Clinical Navigation',
+      };
+    case 'hospital':
+      return {
+        items: HOSPITAL_NAV_ITEMS,
+        bottomItems: HOSPITAL_BOTTOM_NAV_ITEMS,
+        sectionLabel: 'Facility Console',
+        mobileSectionLabel: 'Facility Navigation',
+      };
+    case 'admin':
+      return {
+        items: ADMIN_NAV_ITEMS,
+        bottomItems: ADMIN_BOTTOM_NAV_ITEMS,
+        sectionLabel: 'Program Administration',
+        mobileSectionLabel: 'Administration Navigation',
+      };
+    case 'mother':
+    default:
+      return {
+        items: MOTHER_NAV_ITEMS,
+        bottomItems: BOTTOM_NAV_ITEMS,
+        sectionLabel: 'Care Space',
+        mobileSectionLabel: 'Care Navigation',
+      };
+  }
+};

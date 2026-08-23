@@ -36,7 +36,15 @@ export const Header: React.FC<HeaderProps> = ({
   const { user } = useMockAuth();
   const [showNotifications, setShowNotifications] = useState(false);
   const isDoctor = currentRole === 'doctor';
+  const isPlaceholderRole = currentRole === 'hospital' || currentRole === 'admin';
   const doctorAlerts = isDoctor ? getDoctorAlerts(user.id) : [];
+
+  const profileRouteByRole: Record<UserRole, string> = {
+    mother: '/mother/profile',
+    doctor: '/doctor/profile',
+    hospital: '/hospital/profile',
+    admin: '/admin/profile',
+  };
 
   // Generate dynamic breadcrumb based on current pathname
   const getBreadcrumbs = (): BreadcrumbItem[] => {
@@ -76,7 +84,7 @@ export const Header: React.FC<HeaderProps> = ({
       id: 'profile',
       label: 'My Profile & Details',
       icon: <User className="w-4 h-4" />,
-      onClick: () => navigate(isDoctor ? '/doctor/profile' : '/mother/profile'),
+      onClick: () => navigate(profileRouteByRole[currentRole]),
     },
     {
       id: 'role-switch',
@@ -145,10 +153,10 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="flex items-center justify-between pb-3 border-b border-sandal-100">
                 <div className="flex items-center gap-2">
                   <span className="font-display font-semibold text-warm-brown">
-                    {isDoctor ? 'Clinical Alerts' : 'Care Notifications'}
+                    {isDoctor ? 'Clinical Alerts' : isPlaceholderRole ? 'Notifications' : 'Care Notifications'}
                   </span>
                   <Badge variant="sandal" size="sm">
-                    {isDoctor ? `${doctorAlerts.length} New` : '2 New'}
+                    {isDoctor ? `${doctorAlerts.length} New` : isPlaceholderRole ? '0 New' : '2 New'}
                   </Badge>
                 </div>
                 <button
@@ -188,6 +196,12 @@ export const Header: React.FC<HeaderProps> = ({
                     ))
                   )}
                 </div>
+              ) : isPlaceholderRole ? (
+                <div className="py-6 text-center">
+                  <p className="text-xs text-warm-muted">
+                    No notifications yet. This will be available in a future module.
+                  </p>
+                </div>
               ) : (
                 <div className="py-2 space-y-2.5 max-h-72 overflow-y-auto">
                   {mockNotifications.map((n) => (
@@ -220,13 +234,15 @@ export const Header: React.FC<HeaderProps> = ({
                 </div>
               )}
 
-              <div className="pt-2 border-t border-sandal-100 text-center">
-                <span className="text-[11px] text-warm-muted">
-                  {isDoctor
-                    ? 'High-risk flags, overdue follow-ups, and reports awaiting review.'
-                    : 'Routine reminders for Ananya & baby Vihaan'}
-                </span>
-              </div>
+              {!isPlaceholderRole && (
+                <div className="pt-2 border-t border-sandal-100 text-center">
+                  <span className="text-[11px] text-warm-muted">
+                    {isDoctor
+                      ? 'High-risk flags, overdue follow-ups, and reports awaiting review.'
+                      : 'Routine reminders for Ananya & baby Vihaan'}
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>

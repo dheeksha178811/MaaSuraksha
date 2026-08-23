@@ -25,9 +25,9 @@ export const HospitalDashboardPlaceholder: React.FC = () => {
 
       <EmptyState
         icon={Building2}
-        moduleBadge="Module 6 – Upcoming Hospital Module"
+        moduleBadge="Module 6 — Upcoming Hospital Module"
         title="Your MaaSuraksha Hospital Workspace is being prepared"
-        description="The institutional delivery registry, neonatal bed management, cold-chain vaccine batch inventory, and maternal referral console will be implemented in Module 6."
+        description="Future Module 6 will cover: institutional delivery registry • neonatal bed management • cold-chain vaccine batch/inventory management • maternal referral coordination/console • hospital-level maternal and child care operations."
         action={
           <Link to="/mother/dashboard">
             <Button variant="secondary" size="md">

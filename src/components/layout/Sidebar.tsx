@@ -2,12 +2,7 @@ import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, HeartHandshake } from 'lucide-react';
 import { cn } from '@/utils/cn';
-import {
-  MOTHER_NAV_ITEMS,
-  BOTTOM_NAV_ITEMS,
-  DOCTOR_NAV_ITEMS,
-  DOCTOR_BOTTOM_NAV_ITEMS,
-} from '@/routes/navigationItems';
+import { getNavConfigForRole } from '@/routes/navigationItems';
 import { Badge } from '@/components/ui/Badge';
 import { useMockAuth } from '@/hooks/useMockAuth';
 
@@ -24,10 +19,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const location = useLocation();
   const { role } = useMockAuth();
-  const isDoctor = role === 'doctor';
-  const navItems = isDoctor ? DOCTOR_NAV_ITEMS : MOTHER_NAV_ITEMS;
-  const bottomNavItems = isDoctor ? DOCTOR_BOTTOM_NAV_ITEMS : BOTTOM_NAV_ITEMS;
-  const sectionLabel = isDoctor ? 'Clinical Portal' : 'Care Space';
+  const { items: navItems, bottomItems: bottomNavItems, sectionLabel } = getNavConfigForRole(role);
 
   return (
     <aside
