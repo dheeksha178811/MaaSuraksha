@@ -70,7 +70,7 @@ export const MOTHER_NAV_ITEMS: NavItem[] = [
     title: 'My Child',
     href: '/mother/child',
     icon: Baby,
-    isPlaceholder: true,
+    isPlaceholder: false,
   },
   {
     title: 'Vaccinations',
