@@ -14,7 +14,12 @@ import {
   Sparkles,
   TrendingUp,
   Settings,
-  LogOut
+  LogOut,
+  Users,
+  ClipboardList,
+  MessageCircle,
+  Building2,
+  UserCircle
 } from 'lucide-react';
 import { NavItem } from '@/types';
 
@@ -35,7 +40,7 @@ export const MOTHER_NAV_ITEMS: NavItem[] = [
     title: 'Reports & Documents',
     href: '/mother/documents',
     icon: FileText,
-    isPlaceholder: true,
+    isPlaceholder: false,
   },
   {
     title: 'Appointments',
@@ -114,6 +119,72 @@ export const BOTTOM_NAV_ITEMS: NavItem[] = [
     icon: Settings,
     isPlaceholder: true,
   },
+  {
+    title: 'Logout',
+    href: '/auth/login',
+    icon: LogOut,
+    isPlaceholder: false,
+  },
+];
+
+export const DOCTOR_NAV_ITEMS: NavItem[] = [
+  {
+    title: 'Dashboard',
+    href: '/doctor/dashboard',
+    icon: LayoutDashboard,
+    isPlaceholder: false,
+  },
+  {
+    title: 'My Patients',
+    href: '/doctor/patients',
+    icon: Users,
+    isPlaceholder: false,
+  },
+  {
+    title: 'Appointments',
+    href: '/doctor/appointments',
+    icon: CalendarCheck,
+    isPlaceholder: false,
+  },
+  {
+    title: 'Reports',
+    href: '/doctor/reports',
+    icon: FileText,
+    isPlaceholder: false,
+  },
+  {
+    title: 'Care Plans',
+    href: '/doctor/care-plans',
+    icon: ClipboardList,
+    isPlaceholder: false,
+  },
+  {
+    title: 'Messages',
+    href: '/doctor/messages',
+    icon: MessageCircle,
+    isPlaceholder: true,
+  },
+  {
+    title: 'Notifications',
+    href: '/doctor/notifications',
+    icon: Bell,
+    isPlaceholder: true,
+  },
+  {
+    title: 'My Hospital',
+    href: '/doctor/hospital',
+    icon: Building2,
+    isPlaceholder: false,
+  },
+  {
+    title: 'My Profile',
+    href: '/doctor/profile',
+    icon: UserCircle,
+    isPlaceholder: false,
+  },
+];
+
+export const DOCTOR_BOTTOM_NAV_ITEMS: NavItem[] = [
   {
     title: 'Logout',
     href: '/auth/login',

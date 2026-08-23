@@ -2,8 +2,14 @@ import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, HeartHandshake } from 'lucide-react';
 import { cn } from '@/utils/cn';
-import { MOTHER_NAV_ITEMS, BOTTOM_NAV_ITEMS } from '@/routes/navigationItems';
+import {
+  MOTHER_NAV_ITEMS,
+  BOTTOM_NAV_ITEMS,
+  DOCTOR_NAV_ITEMS,
+  DOCTOR_BOTTOM_NAV_ITEMS,
+} from '@/routes/navigationItems';
 import { Badge } from '@/components/ui/Badge';
+import { useMockAuth } from '@/hooks/useMockAuth';
 
 export interface SidebarProps {
   isCollapsed: boolean;
@@ -17,6 +23,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   className,
 }) => {
   const location = useLocation();
+  const { role } = useMockAuth();
+  const isDoctor = role === 'doctor';
+  const navItems = isDoctor ? DOCTOR_NAV_ITEMS : MOTHER_NAV_ITEMS;
+  const bottomNavItems = isDoctor ? DOCTOR_BOTTOM_NAV_ITEMS : BOTTOM_NAV_ITEMS;
+  const sectionLabel = isDoctor ? 'Clinical Portal' : 'Care Space';
 
   return (
     <aside
@@ -71,11 +82,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
         {!isCollapsed && (
           <div className="px-3 pb-2 text-[10px] font-bold tracking-wider uppercase text-warm-muted/80">
-            Care Space
+            {sectionLabel}
           </div>
         )}
 
-        {MOTHER_NAV_ITEMS.map((item) => {
+        {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.href;
 
@@ -127,7 +138,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Bottom Area (Settings, Logout) */}
       <div className="p-3 border-t border-sandal-200/50 space-y-1">
-        {BOTTOM_NAV_ITEMS.map((item) => {
+        {bottomNavItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.href;
 

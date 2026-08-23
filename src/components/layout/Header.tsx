@@ -9,13 +9,16 @@ import {
   LogOut,
   Sparkles,
   HeartHandshake,
+  Stethoscope,
 } from 'lucide-react';
 import { Breadcrumb } from '@/components/ui/Breadcrumb';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Dropdown, DropdownItem } from '@/components/ui/Dropdown';
-import { mockMother, mockNotifications } from '@/data/mockData';
+import { mockNotifications } from '@/data/mockData';
+import { getDoctorAlerts } from '@/data/doctorPatientsMockData';
 import { BreadcrumbItem, UserRole } from '@/types';
+import { useMockAuth } from '@/hooks/useMockAuth';
 
 export interface HeaderProps {
   onOpenMobileMenu?: () => void;
@@ -30,7 +33,10 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useMockAuth();
   const [showNotifications, setShowNotifications] = useState(false);
+  const isDoctor = currentRole === 'doctor';
+  const doctorAlerts = isDoctor ? getDoctorAlerts(user.id) : [];
 
   // Generate dynamic breadcrumb based on current pathname
   const getBreadcrumbs = (): BreadcrumbItem[] => {
@@ -46,7 +52,15 @@ export const Header: React.FC<HeaderProps> = ({
       ];
     }
     if (path.startsWith('/doctor')) {
-      return [{ label: 'Clinical Portal', href: '/doctor/dashboard' }, { label: 'Dashboard' }];
+      const sub = path.replace('/doctor', '').replace('/', '');
+      const firstSegment = sub.split('/')[0];
+      const formattedSub = firstSegment
+        ? firstSegment.charAt(0).toUpperCase() + firstSegment.slice(1).replace(/-/g, ' ')
+        : 'Dashboard';
+      return [
+        { label: 'Clinical Portal', href: '/doctor/dashboard' },
+        { label: formattedSub },
+      ];
     }
     if (path.startsWith('/hospital')) {
       return [{ label: 'Facility Console', href: '/hospital/dashboard' }, { label: 'Dashboard' }];
@@ -62,7 +76,7 @@ export const Header: React.FC<HeaderProps> = ({
       id: 'profile',
       label: 'My Profile & Details',
       icon: <User className="w-4 h-4" />,
-      onClick: () => navigate('/mother/profile'),
+      onClick: () => navigate(isDoctor ? '/doctor/profile' : '/mother/profile'),
     },
     {
       id: 'role-switch',
@@ -131,9 +145,11 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="flex items-center justify-between pb-3 border-b border-sandal-100">
                 <div className="flex items-center gap-2">
                   <span className="font-display font-semibold text-warm-brown">
-                    Care Notifications
+                    {isDoctor ? 'Clinical Alerts' : 'Care Notifications'}
                   </span>
-                  <Badge variant="sandal" size="sm">2 New</Badge>
+                  <Badge variant="sandal" size="sm">
+                    {isDoctor ? `${doctorAlerts.length} New` : '2 New'}
+                  </Badge>
                 </div>
                 <button
                   onClick={() => setShowNotifications(false)}
@@ -143,39 +159,72 @@ export const Header: React.FC<HeaderProps> = ({
                 </button>
               </div>
 
-              <div className="py-2 space-y-2.5 max-h-72 overflow-y-auto">
-                {mockNotifications.map((n) => (
-                  <div
-                    key={n.id}
-                    className="p-2.5 rounded-xl bg-warm-cream/50 hover:bg-warm-cream border border-sandal-100/50 transition-colors"
-                  >
-                    <div className="flex items-start gap-2.5">
-                      <div className="p-1.5 rounded-lg bg-peach-verySoft text-sandal-600 shrink-0 mt-0.5">
-                        {n.type === 'vaccination_reminder' ? (
-                          <Sparkles className="w-3.5 h-3.5" />
-                        ) : (
-                          <HeartHandshake className="w-3.5 h-3.5" />
-                        )}
+              {isDoctor ? (
+                <div className="py-2 space-y-2.5 max-h-72 overflow-y-auto">
+                  {doctorAlerts.length === 0 ? (
+                    <p className="text-xs text-warm-muted text-center py-4">
+                      No active alerts across your patients.
+                    </p>
+                  ) : (
+                    doctorAlerts.map((alert) => (
+                      <div
+                        key={alert.id}
+                        className="p-2.5 rounded-xl bg-warm-cream/50 hover:bg-warm-cream border border-sandal-100/50 transition-colors"
+                      >
+                        <div className="flex items-start gap-2.5">
+                          <div className="p-1.5 rounded-lg bg-peach-verySoft text-sandal-600 shrink-0 mt-0.5">
+                            <Stethoscope className="w-3.5 h-3.5" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-warm-brown truncate">
+                              {alert.patientName}
+                            </p>
+                            <p className="text-[11px] text-warm-muted leading-relaxed mt-0.5">
+                              {alert.message}
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-warm-brown truncate">
-                          {n.title}
-                        </p>
-                        <p className="text-[11px] text-warm-muted leading-relaxed mt-0.5">
-                          {n.message}
-                        </p>
-                        <span className="text-[10px] text-sandal-600/80 font-medium block mt-1">
-                          {n.timestamp}
-                        </span>
+                    ))
+                  )}
+                </div>
+              ) : (
+                <div className="py-2 space-y-2.5 max-h-72 overflow-y-auto">
+                  {mockNotifications.map((n) => (
+                    <div
+                      key={n.id}
+                      className="p-2.5 rounded-xl bg-warm-cream/50 hover:bg-warm-cream border border-sandal-100/50 transition-colors"
+                    >
+                      <div className="flex items-start gap-2.5">
+                        <div className="p-1.5 rounded-lg bg-peach-verySoft text-sandal-600 shrink-0 mt-0.5">
+                          {n.type === 'vaccination_reminder' ? (
+                            <Sparkles className="w-3.5 h-3.5" />
+                          ) : (
+                            <HeartHandshake className="w-3.5 h-3.5" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-warm-brown truncate">
+                            {n.title}
+                          </p>
+                          <p className="text-[11px] text-warm-muted leading-relaxed mt-0.5">
+                            {n.message}
+                          </p>
+                          <span className="text-[10px] text-sandal-600/80 font-medium block mt-1">
+                            {n.timestamp}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
 
               <div className="pt-2 border-t border-sandal-100 text-center">
                 <span className="text-[11px] text-warm-muted">
-                  Routine reminders for Ananya & baby Vihaan
+                  {isDoctor
+                    ? 'High-risk flags, overdue follow-ups, and reports awaiting review.'
+                    : 'Routine reminders for Ananya & baby Vihaan'}
                 </span>
               </div>
             </div>
@@ -189,16 +238,16 @@ export const Header: React.FC<HeaderProps> = ({
           trigger={
             <div className="flex items-center gap-2.5 p-1 rounded-xl hover:bg-warm-cream transition-colors group">
               <Avatar
-                name={mockMother.name}
+                name={user.name}
                 size="sm"
                 className="border border-sandal-300 shadow-subtle"
               />
               <div className="hidden sm:flex flex-col text-left leading-none">
                 <span className="text-xs font-semibold text-warm-brown group-hover:text-sandal-900 truncate max-w-[120px]">
-                  {mockMother.name}
+                  {user.name}
                 </span>
-                <span className="text-[10px] font-medium text-warm-muted mt-0.5">
-                  Mother
+                <span className="text-[10px] font-medium text-warm-muted mt-0.5 capitalize">
+                  {currentRole}
                 </span>
               </div>
               <ChevronDown className="w-3.5 h-3.5 text-warm-muted group-hover:text-sandal-900 transition-colors" />

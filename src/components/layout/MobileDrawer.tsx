@@ -2,9 +2,15 @@ import React, { useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { X, HeartHandshake } from 'lucide-react';
 import { cn } from '@/utils/cn';
-import { MOTHER_NAV_ITEMS, BOTTOM_NAV_ITEMS } from '@/routes/navigationItems';
+import {
+  MOTHER_NAV_ITEMS,
+  BOTTOM_NAV_ITEMS,
+  DOCTOR_NAV_ITEMS,
+  DOCTOR_BOTTOM_NAV_ITEMS,
+} from '@/routes/navigationItems';
 import { Badge } from '@/components/ui/Badge';
 import { IconButton } from '@/components/ui/IconButton';
+import { useMockAuth } from '@/hooks/useMockAuth';
 
 export interface MobileDrawerProps {
   isOpen: boolean;
@@ -13,6 +19,11 @@ export interface MobileDrawerProps {
 
 export const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) => {
   const location = useLocation();
+  const { role } = useMockAuth();
+  const isDoctor = role === 'doctor';
+  const navItems = isDoctor ? DOCTOR_NAV_ITEMS : MOTHER_NAV_ITEMS;
+  const bottomNavItems = isDoctor ? DOCTOR_BOTTOM_NAV_ITEMS : BOTTOM_NAV_ITEMS;
+  const sectionLabel = isDoctor ? 'Clinical Navigation' : 'Care Navigation';
 
   useEffect(() => {
     onClose();
@@ -59,10 +70,10 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) =
         {/* Navigation list */}
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
           <div className="px-3 pb-2 text-[10px] font-bold tracking-wider uppercase text-warm-muted/80">
-            Care Navigation
+            {sectionLabel}
           </div>
 
-          {MOTHER_NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.href;
 
@@ -96,7 +107,7 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) =
 
         {/* Bottom items */}
         <div className="p-4 border-t border-sandal-200/60 space-y-1 bg-warm-ivory/50">
-          {BOTTOM_NAV_ITEMS.map((item) => {
+          {bottomNavItems.map((item) => {
             const Icon = item.icon;
             return (
               <NavLink
