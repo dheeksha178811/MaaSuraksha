@@ -10,6 +10,7 @@ import { ReportsPage } from '@/pages/reports/ReportsPage';
 import { MotherAppointmentsPage } from '@/pages/appointments/MotherAppointmentsPage';
 import { MotherMedicationsPage } from '@/pages/medications/MotherMedicationsPage';
 import { MotherVaccinationsPage } from '@/pages/vaccinations/MotherVaccinationsPage';
+import { MotherGrowthMilestonesPage } from '@/pages/growth/MotherGrowthMilestonesPage';
 import { DoctorHospitalUploadFoundation } from '@/pages/reports/DoctorHospitalUploadFoundation';
 import { HospitalDashboardPlaceholder } from '@/pages/dashboard/HospitalDashboardPlaceholder';
 import { AdminDashboardPlaceholder } from '@/pages/dashboard/AdminDashboardPlaceholder';
@@ -56,6 +57,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/mother/settings" element={<PlaceholderPage />} />
         <Route path="/mother/medications" element={<MotherMedicationsPage />} />
         <Route path="/mother/growth" element={<PlaceholderPage />} />
+        <Route path="/mother/growth-milestones" element={<MotherGrowthMilestonesPage />} />
         <Route path="/mother/hospital" element={<PlaceholderPage />} />
         <Route path="/mother/notifications" element={<PlaceholderPage />} />
         <Route path="/mother/qr" element={<PlaceholderPage />} />

@@ -81,9 +81,9 @@ export const MOTHER_NAV_ITEMS: NavItem[] = [
   },
   {
     title: 'Growth & Milestones',
-    href: '/mother/growth',
+    href: '/mother/growth-milestones',
     icon: TrendingUp,
-    isPlaceholder: true,
+    isPlaceholder: false,
   },
   {
     title: 'My Hospital',
