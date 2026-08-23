@@ -7,6 +7,8 @@ export * from './appointment';
 export * from './medication';
 export * from './vaccination';
 export * from './growth';
+export * from './nutrition';
+export * from './timeline';
 export * from './notification';
 export * from './navigation';
 export * from './assistant';

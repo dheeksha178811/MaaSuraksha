@@ -64,7 +64,7 @@ export const MOTHER_NAV_ITEMS: NavItem[] = [
     title: 'My Care',
     href: '/mother/timeline',
     icon: FolderHeart,
-    isPlaceholder: true,
+    isPlaceholder: false,
   },
   {
     title: 'My Child',
