@@ -95,7 +95,7 @@ export const MOTHER_NAV_ITEMS: NavItem[] = [
     title: 'My Doctor',
     href: '/mother/doctor',
     icon: Stethoscope,
-    isPlaceholder: true,
+    isPlaceholder: false,
   },
   {
     title: 'Notifications',

@@ -15,3 +15,4 @@ export * from './navigation';
 export * from './assistant';
 export * from './report';
 export * from './careTeam';
+export * from './motherDoctor';
