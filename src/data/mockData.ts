@@ -71,9 +71,12 @@ export const mockHospital: HospitalProfile = {
   address: '100 Feet Road, HAL 2nd Stage, Indiranagar',
   city: 'Bengaluru',
   state: 'Karnataka',
+  postalCode: '560038',
   contactNumber: '+91 80 2525 9000',
   totalBeds: 120,
+  availableBeds: 14,
   neonatalICUAvailable: true,
+  status: 'ACTIVE',
   createdAt: '2024-01-15',
 };
 

@@ -19,7 +19,6 @@ import { MotherNotificationsPage } from '@/pages/notifications/MotherNotificatio
 import { MotherQrPage } from '@/pages/qr/MotherQrPage';
 import { MotherSettingsPage } from '@/pages/settings/MotherSettingsPage';
 import { DoctorHospitalUploadFoundation } from '@/pages/reports/DoctorHospitalUploadFoundation';
-import { HospitalDashboardPlaceholder } from '@/pages/dashboard/HospitalDashboardPlaceholder';
 import { AdminDashboardPlaceholder } from '@/pages/dashboard/AdminDashboardPlaceholder';
 import { PlaceholderPage } from '@/pages/common/PlaceholderPage';
 import { NotFoundPage } from '@/pages/common/NotFoundPage';
@@ -34,7 +33,17 @@ import { DoctorProfilePage } from '@/pages/doctor/DoctorProfilePage';
 import { DoctorSettingsPage } from '@/pages/doctor/DoctorSettingsPage';
 import { DoctorMessagesPage } from '@/pages/doctor/DoctorMessagesPage';
 import { DoctorNotificationsPage } from '@/pages/doctor/DoctorNotificationsPage';
-import { HospitalPlaceholderPage } from '@/pages/hospital/HospitalPlaceholderPage';
+import { HospitalDashboardPage } from '@/pages/hospital/HospitalDashboardPage';
+import { HospitalPatientsPage } from '@/pages/hospital/HospitalPatientsPage';
+import { HospitalPatientDetailPage } from '@/pages/hospital/HospitalPatientDetailPage';
+import { HospitalDeliveriesPage } from '@/pages/hospital/HospitalDeliveriesPage';
+import { HospitalNeonatalCarePage } from '@/pages/hospital/HospitalNeonatalCarePage';
+import { HospitalBedsPage } from '@/pages/hospital/HospitalBedsPage';
+import { HospitalVaccinesPage } from '@/pages/hospital/HospitalVaccinesPage';
+import { HospitalReferralsPage } from '@/pages/hospital/HospitalReferralsPage';
+import { HospitalReportsPage } from '@/pages/hospital/HospitalReportsPage';
+import { HospitalProfilePage } from '@/pages/hospital/HospitalProfilePage';
+import { HospitalSettingsPage } from '@/pages/hospital/HospitalSettingsPage';
 import { AdminPlaceholderPage } from '@/pages/admin/AdminPlaceholderPage';
 
 export const AppRoutes: React.FC = () => {
@@ -85,17 +94,18 @@ export const AppRoutes: React.FC = () => {
         <Route path="/doctor/settings" element={<DoctorSettingsPage />} />
         <Route path="/doctor/upload-report" element={<DoctorHospitalUploadFoundation />} />
 
-        {/* Hospital Space Routes (placeholder/shell only — full Module 6 not yet implemented) */}
-        <Route path="/hospital/dashboard" element={<HospitalDashboardPlaceholder />} />
-        <Route path="/hospital/patients" element={<HospitalPlaceholderPage />} />
-        <Route path="/hospital/deliveries" element={<HospitalPlaceholderPage />} />
-        <Route path="/hospital/neonatal-care" element={<HospitalPlaceholderPage />} />
-        <Route path="/hospital/beds" element={<HospitalPlaceholderPage />} />
-        <Route path="/hospital/vaccines" element={<HospitalPlaceholderPage />} />
-        <Route path="/hospital/referrals" element={<HospitalPlaceholderPage />} />
-        <Route path="/hospital/reports" element={<HospitalPlaceholderPage />} />
-        <Route path="/hospital/profile" element={<HospitalPlaceholderPage />} />
-        <Route path="/hospital/settings" element={<HospitalPlaceholderPage />} />
+        {/* Hospital Space Routes (Module 6) */}
+        <Route path="/hospital/dashboard" element={<HospitalDashboardPage />} />
+        <Route path="/hospital/patients" element={<HospitalPatientsPage />} />
+        <Route path="/hospital/patients/:patientId" element={<HospitalPatientDetailPage />} />
+        <Route path="/hospital/deliveries" element={<HospitalDeliveriesPage />} />
+        <Route path="/hospital/neonatal-care" element={<HospitalNeonatalCarePage />} />
+        <Route path="/hospital/beds" element={<HospitalBedsPage />} />
+        <Route path="/hospital/vaccines" element={<HospitalVaccinesPage />} />
+        <Route path="/hospital/referrals" element={<HospitalReferralsPage />} />
+        <Route path="/hospital/reports" element={<HospitalReportsPage />} />
+        <Route path="/hospital/profile" element={<HospitalProfilePage />} />
+        <Route path="/hospital/settings" element={<HospitalSettingsPage />} />
         <Route path="/hospital/upload-report" element={<DoctorHospitalUploadFoundation />} />
 
         {/* Admin Space Routes (placeholder/shell only — full Module 7 not yet implemented) */}

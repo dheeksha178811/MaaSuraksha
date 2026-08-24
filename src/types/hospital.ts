@@ -1,5 +1,7 @@
 import { BaseUser } from './user';
 
+export type HospitalOperationalStatus = 'ACTIVE' | 'INACTIVE' | 'UNDER_MAINTENANCE';
+
 export interface HospitalProfile extends BaseUser {
   role: 'hospital';
   facilityName: string;
@@ -8,7 +10,10 @@ export interface HospitalProfile extends BaseUser {
   address: string;
   city: string;
   state: string;
+  postalCode?: string;
   contactNumber: string;
   totalBeds: number;
+  availableBeds?: number;
   neonatalICUAvailable: boolean;
+  status?: HospitalOperationalStatus;
 }
