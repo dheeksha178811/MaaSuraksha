@@ -1,11 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
+import { validateProfileByRole } from './profileValidators';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const VALID_ROLES = ['mother', 'doctor', 'hospital', 'admin'];
 const MIN_PASSWORD_LENGTH = 8;
 
 export function validateRegister(req: Request, res: Response, next: NextFunction) {
-  const { email, password, role, phone } = req.body ?? {};
+  const { email, password, role, phone, profile } = req.body ?? {};
   const errors: string[] = [];
 
   if (!email || typeof email !== 'string' || !EMAIL_REGEX.test(email)) {
@@ -19,6 +20,15 @@ export function validateRegister(req: Request, res: Response, next: NextFunction
   }
   if (phone !== undefined && phone !== null && typeof phone !== 'string') {
     errors.push('Phone must be a string.');
+  }
+  if (profile !== undefined && (typeof profile !== 'object' || profile === null || Array.isArray(profile))) {
+    errors.push('profile must be an object.');
+  }
+
+  // Only validate profile fields once the role itself is known to be valid —
+  // otherwise we'd be validating against the wrong shape.
+  if (role && typeof role === 'string' && VALID_ROLES.includes(role)) {
+    errors.push(...validateProfileByRole(role, profile));
   }
 
   if (errors.length > 0) {

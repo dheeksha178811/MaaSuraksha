@@ -3,11 +3,23 @@ import { registerUser, loginUser, AuthError } from '../services/authService';
 import { logger } from '../utils/logger';
 
 export async function register(req: Request, res: Response) {
-  const { email, password, role, phone } = req.body;
+  const { email, password, role, phone, profile } = req.body;
 
   try {
-    const { user, token } = await registerUser(email, password, role, phone);
-    res.status(201).json({ success: true, message: 'Account created successfully.', user, token });
+    const { user, token, profile: createdProfile } = await registerUser(
+      email,
+      password,
+      role,
+      phone,
+      profile ?? {}
+    );
+    res.status(201).json({
+      success: true,
+      message: 'Account created successfully.',
+      user,
+      profile: createdProfile,
+      token,
+    });
   } catch (error) {
     if (error instanceof AuthError) {
       res.status(error.status).json({ success: false, message: error.message });
