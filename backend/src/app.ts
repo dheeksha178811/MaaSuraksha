@@ -1,6 +1,9 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import routes from './routes';
+import { notFound } from './middleware/notFound';
+import { errorHandler } from './middleware/errorHandler';
 
 dotenv.config();
 
@@ -11,20 +14,9 @@ const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 app.use(cors({ origin: frontendUrl }));
 app.use(express.json());
 
-app.get('/api/health', (_req: Request, res: Response) => {
-  res.json({
-    success: true,
-    message: 'MaaSuraksha API is running',
-  });
-});
+app.use('/api', routes);
 
-app.use((_req: Request, res: Response) => {
-  res.status(404).json({ success: false, message: 'Route not found' });
-});
-
-app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-  console.error(err.stack);
-  res.status(500).json({ success: false, message: 'Internal server error' });
-});
+app.use(notFound);
+app.use(errorHandler);
 
 export default app;
