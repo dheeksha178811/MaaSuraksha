@@ -31,7 +31,8 @@ import { DoctorReportsPage } from '@/pages/doctor/DoctorReportsPage';
 import { DoctorCarePlansPage } from '@/pages/doctor/DoctorCarePlansPage';
 import { DoctorHospitalPage } from '@/pages/doctor/DoctorHospitalPage';
 import { DoctorProfilePage } from '@/pages/doctor/DoctorProfilePage';
-import { DoctorPlaceholderPage } from '@/pages/doctor/DoctorPlaceholderPage';
+import { DoctorMessagesPage } from '@/pages/doctor/DoctorMessagesPage';
+import { DoctorNotificationsPage } from '@/pages/doctor/DoctorNotificationsPage';
 import { HospitalPlaceholderPage } from '@/pages/hospital/HospitalPlaceholderPage';
 import { AdminPlaceholderPage } from '@/pages/admin/AdminPlaceholderPage';
 
@@ -76,8 +77,8 @@ export const AppRoutes: React.FC = () => {
         <Route path="/doctor/appointments" element={<DoctorAppointmentsPage />} />
         <Route path="/doctor/reports" element={<DoctorReportsPage />} />
         <Route path="/doctor/care-plans" element={<DoctorCarePlansPage />} />
-        <Route path="/doctor/messages" element={<DoctorPlaceholderPage />} />
-        <Route path="/doctor/notifications" element={<DoctorPlaceholderPage />} />
+        <Route path="/doctor/messages" element={<DoctorMessagesPage />} />
+        <Route path="/doctor/notifications" element={<DoctorNotificationsPage />} />
         <Route path="/doctor/hospital" element={<DoctorHospitalPage />} />
         <Route path="/doctor/profile" element={<DoctorProfilePage />} />
         <Route path="/doctor/upload-report" element={<DoctorHospitalUploadFoundation />} />

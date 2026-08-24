@@ -167,13 +167,13 @@ export const DOCTOR_NAV_ITEMS: NavItem[] = [
     title: 'Messages',
     href: '/doctor/messages',
     icon: MessageCircle,
-    isPlaceholder: true,
+    isPlaceholder: false,
   },
   {
     title: 'Notifications',
     href: '/doctor/notifications',
     icon: Bell,
-    isPlaceholder: true,
+    isPlaceholder: false,
   },
   {
     title: 'My Hospital',

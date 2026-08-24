@@ -1,4 +1,5 @@
 import { AssignedPatient, DoctorAppointmentStatus, PatientRiskLevel, PatientStatus, ReportStatus } from '@/types';
+import { formatDate } from '@/utils/formatters';
 
 type BadgeVariant = 'sandal' | 'sage' | 'peach' | 'warm' | 'danger' | 'outline';
 
@@ -71,6 +72,29 @@ export const getReportStatusBadgeVariant = (status: ReportStatus): BadgeVariant 
     default:
       return 'outline';
   }
+};
+
+const formatClockTime = (date: Date): string =>
+  new Intl.DateTimeFormat('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true }).format(date);
+
+/**
+ * Formats an ISO datetime as "Today, 8:10 AM" / "Yesterday, 7:05 PM" /
+ * "23 Aug 2026, 7:05 PM" relative to a fixed "now" reference — shared by the
+ * Doctor Messages and Doctor Notifications modules so their timestamps read
+ * consistently.
+ */
+export const formatClinicalTimestamp = (iso: string, nowIso: string): string => {
+  const date = new Date(iso);
+  const dateDay = iso.slice(0, 10);
+  const nowDay = nowIso.slice(0, 10);
+
+  if (dateDay === nowDay) return `Today, ${formatClockTime(date)}`;
+
+  const yesterday = new Date(nowIso);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (dateDay === yesterday.toISOString().slice(0, 10)) return `Yesterday, ${formatClockTime(date)}`;
+
+  return `${formatDate(iso)}, ${formatClockTime(date)}`;
 };
 
 export const getPatientStageSummary = (patient: AssignedPatient): string => {

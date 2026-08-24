@@ -18,3 +18,5 @@ export * from './careTeam';
 export * from './motherDoctor';
 export * from './motherQr';
 export * from './motherSettings';
+export * from './doctorMessaging';
+export * from './doctorNotification';
