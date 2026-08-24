@@ -7,7 +7,9 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "test:db": "tsx src/scripts/testConnection.ts"
+    "test:db": "tsx src/scripts/testConnection.ts",
+    "migrate": "tsx src/scripts/migrate.ts",
+    "verify:schema": "tsx src/scripts/verifySchema.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",
