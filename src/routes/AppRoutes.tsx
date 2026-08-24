@@ -19,7 +19,6 @@ import { MotherNotificationsPage } from '@/pages/notifications/MotherNotificatio
 import { MotherQrPage } from '@/pages/qr/MotherQrPage';
 import { MotherSettingsPage } from '@/pages/settings/MotherSettingsPage';
 import { DoctorHospitalUploadFoundation } from '@/pages/reports/DoctorHospitalUploadFoundation';
-import { AdminDashboardPlaceholder } from '@/pages/dashboard/AdminDashboardPlaceholder';
 import { PlaceholderPage } from '@/pages/common/PlaceholderPage';
 import { NotFoundPage } from '@/pages/common/NotFoundPage';
 import { DoctorDashboardPage } from '@/pages/doctor/DoctorDashboardPage';
@@ -44,6 +43,16 @@ import { HospitalReferralsPage } from '@/pages/hospital/HospitalReferralsPage';
 import { HospitalReportsPage } from '@/pages/hospital/HospitalReportsPage';
 import { HospitalProfilePage } from '@/pages/hospital/HospitalProfilePage';
 import { HospitalSettingsPage } from '@/pages/hospital/HospitalSettingsPage';
+import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage';
+import { AdminProgramOverviewPage } from '@/pages/admin/AdminProgramOverviewPage';
+import { AdminFacilitiesPage } from '@/pages/admin/AdminFacilitiesPage';
+import { AdminFacilityDetailPage } from '@/pages/admin/AdminFacilityDetailPage';
+import { AdminMaternalAnalyticsPage } from '@/pages/admin/AdminMaternalAnalyticsPage';
+import { AdminImmunizationPage } from '@/pages/admin/AdminImmunizationPage';
+import { AdminHighRiskMonitoringPage } from '@/pages/admin/AdminHighRiskMonitoringPage';
+import { AdminReportsPage } from '@/pages/admin/AdminReportsPage';
+import { AdminAlertsPage } from '@/pages/admin/AdminAlertsPage';
+import { AdminSettingsPage } from '@/pages/admin/AdminSettingsPage';
 import { AdminPlaceholderPage } from '@/pages/admin/AdminPlaceholderPage';
 
 export const AppRoutes: React.FC = () => {
@@ -108,16 +117,17 @@ export const AppRoutes: React.FC = () => {
         <Route path="/hospital/settings" element={<HospitalSettingsPage />} />
         <Route path="/hospital/upload-report" element={<DoctorHospitalUploadFoundation />} />
 
-        {/* Admin Space Routes (placeholder/shell only — full Module 7 not yet implemented) */}
-        <Route path="/admin/dashboard" element={<AdminDashboardPlaceholder />} />
-        <Route path="/admin/program-overview" element={<AdminPlaceholderPage />} />
-        <Route path="/admin/facilities" element={<AdminPlaceholderPage />} />
-        <Route path="/admin/maternal-analytics" element={<AdminPlaceholderPage />} />
-        <Route path="/admin/immunization" element={<AdminPlaceholderPage />} />
-        <Route path="/admin/high-risk-monitoring" element={<AdminPlaceholderPage />} />
-        <Route path="/admin/reports" element={<AdminPlaceholderPage />} />
-        <Route path="/admin/alerts" element={<AdminPlaceholderPage />} />
-        <Route path="/admin/settings" element={<AdminPlaceholderPage />} />
+        {/* Admin Space Routes (Module 7) */}
+        <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+        <Route path="/admin/program-overview" element={<AdminProgramOverviewPage />} />
+        <Route path="/admin/facilities" element={<AdminFacilitiesPage />} />
+        <Route path="/admin/facilities/:facilityId" element={<AdminFacilityDetailPage />} />
+        <Route path="/admin/maternal-analytics" element={<AdminMaternalAnalyticsPage />} />
+        <Route path="/admin/immunization" element={<AdminImmunizationPage />} />
+        <Route path="/admin/high-risk-monitoring" element={<AdminHighRiskMonitoringPage />} />
+        <Route path="/admin/reports" element={<AdminReportsPage />} />
+        <Route path="/admin/alerts" element={<AdminAlertsPage />} />
+        <Route path="/admin/settings" element={<AdminSettingsPage />} />
         <Route path="/admin/profile" element={<AdminPlaceholderPage />} />
       </Route>
 

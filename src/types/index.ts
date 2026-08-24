@@ -22,3 +22,4 @@ export * from './doctorMessaging';
 export * from './doctorNotification';
 export * from './doctorSettings';
 export * from './hospitalOperations';
+export * from './adminOperations';
