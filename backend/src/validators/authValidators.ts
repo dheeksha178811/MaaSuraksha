@@ -57,3 +57,38 @@ export function validateLogin(req: Request, res: Response, next: NextFunction) {
 
   next();
 }
+
+export function validateForgotPassword(req: Request, res: Response, next: NextFunction) {
+  const { email } = req.body ?? {};
+  const errors: string[] = [];
+
+  if (!email || typeof email !== 'string' || !EMAIL_REGEX.test(email)) {
+    errors.push('A valid email is required.');
+  }
+
+  if (errors.length > 0) {
+    res.status(400).json({ success: false, message: 'Validation failed', errors });
+    return;
+  }
+
+  next();
+}
+
+export function validateResetPassword(req: Request, res: Response, next: NextFunction) {
+  const { resetToken, newPassword } = req.body ?? {};
+  const errors: string[] = [];
+
+  if (!resetToken || typeof resetToken !== 'string' || resetToken.trim().length === 0) {
+    errors.push('resetToken is required.');
+  }
+  if (!newPassword || typeof newPassword !== 'string' || newPassword.length < MIN_PASSWORD_LENGTH) {
+    errors.push(`newPassword must be at least ${MIN_PASSWORD_LENGTH} characters.`);
+  }
+
+  if (errors.length > 0) {
+    res.status(400).json({ success: false, message: 'Validation failed', errors });
+    return;
+  }
+
+  next();
+}

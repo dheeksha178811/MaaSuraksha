@@ -1,5 +1,11 @@
 import { Request, Response } from 'express';
-import { registerUser, loginUser, AuthError } from '../services/authService';
+import {
+  registerUser,
+  loginUser,
+  requestPasswordReset,
+  resetPassword as resetPasswordService,
+  AuthError,
+} from '../services/authService';
 import { logger } from '../utils/logger';
 
 export async function register(req: Request, res: Response) {
@@ -43,5 +49,49 @@ export async function login(req: Request, res: Response) {
     }
     logger.error('Login failed', error);
     res.status(500).json({ success: false, message: 'Unable to complete login.' });
+  }
+}
+
+const FORGOT_PASSWORD_MESSAGE = 'If an account exists for this email, a password reset link has been sent.';
+
+export async function forgotPassword(req: Request, res: Response) {
+  const { email } = req.body;
+
+  try {
+    const { resetToken, expiresAt } = await requestPasswordReset(email);
+
+    const response: Record<string, unknown> = {
+      success: true,
+      message: FORGOT_PASSWORD_MESSAGE,
+    };
+
+    // Local dev/testing only: never sent in production, and never lets the
+    // response shape depend on whether the email matched an account beyond
+    // this explicitly-gated debug field.
+    if (process.env.NODE_ENV !== 'production' && resetToken) {
+      response.devResetToken = resetToken;
+      response.devResetTokenExpiresAt = expiresAt;
+    }
+
+    res.status(200).json(response);
+  } catch (error) {
+    logger.error('Forgot password request failed', error);
+    res.status(500).json({ success: false, message: 'Unable to process password reset request.' });
+  }
+}
+
+export async function resetPassword(req: Request, res: Response) {
+  const { resetToken, newPassword } = req.body;
+
+  try {
+    await resetPasswordService(resetToken, newPassword);
+    res.status(200).json({ success: true, message: 'Password has been reset successfully.' });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      res.status(error.status).json({ success: false, message: error.message });
+      return;
+    }
+    logger.error('Reset password failed', error);
+    res.status(500).json({ success: false, message: 'Unable to reset password.' });
   }
 }

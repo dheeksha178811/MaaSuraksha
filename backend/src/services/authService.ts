@@ -1,10 +1,24 @@
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import { pool } from '../config/db';
 import { signToken } from '../utils/jwt';
 import { createProfileForRole } from './profileService';
 import { isPgError, PG_ERROR_CODES } from '../utils/dbErrors';
 
 const SALT_ROUNDS = 12;
+const RESET_TOKEN_TTL_MINUTES = 30;
+
+async function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, SALT_ROUNDS);
+}
+
+function generateResetToken(): string {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+function hashResetToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
 
 export class AuthError extends Error {
   status: number;
@@ -57,7 +71,7 @@ export async function registerUser(
     throw new AuthError('An account with this email already exists.', 409);
   }
 
-  const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+  const passwordHash = await hashPassword(password);
 
   const client = await pool.connect();
   try {
@@ -127,4 +141,58 @@ export async function loginUser(email: string, password: string): Promise<{ user
   const token = signToken({ userId: user.id, role: user.role });
 
   return { user, token };
+}
+
+export interface PasswordResetRequestResult {
+  resetToken?: string;
+  expiresAt?: string;
+}
+
+/**
+ * Always succeeds from the caller's point of view — whether or not the email
+ * matches an account is never observable from the return value alone. Only
+ * the (dev-only) resetToken/expiresAt fields being present tells you a match
+ * was found; the controller gates those behind NODE_ENV before responding.
+ */
+export async function requestPasswordReset(email: string): Promise<PasswordResetRequestResult> {
+  const rawToken = generateResetToken();
+  const tokenHash = hashResetToken(rawToken);
+  const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MINUTES * 60 * 1000);
+
+  const result = await pool.query<{ id: string }>(
+    `UPDATE users
+     SET reset_token_hash = $1, reset_token_expires_at = $2, updated_at = now()
+     WHERE email = $3 AND is_active = true
+     RETURNING id`,
+    [tokenHash, expiresAt.toISOString(), email]
+  );
+
+  if (result.rowCount === 0) {
+    return {};
+  }
+
+  return { resetToken: rawToken, expiresAt: expiresAt.toISOString() };
+}
+
+/**
+ * Single atomic UPDATE guarded by the token hash + expiry: this is what
+ * makes the token single-use (it's cleared on success, so a reused token
+ * hashes to a value that no longer matches any row) and makes expired /
+ * unknown tokens fail the same way (zero rows affected).
+ */
+export async function resetPassword(rawToken: string, newPassword: string): Promise<void> {
+  const tokenHash = hashResetToken(rawToken);
+  const passwordHash = await hashPassword(newPassword);
+
+  const result = await pool.query(
+    `UPDATE users
+     SET password_hash = $1, reset_token_hash = NULL, reset_token_expires_at = NULL, updated_at = now()
+     WHERE reset_token_hash = $2 AND reset_token_expires_at > now()
+     RETURNING id`,
+    [passwordHash, tokenHash]
+  );
+
+  if (result.rowCount === 0) {
+    throw new AuthError('Invalid or expired reset token.', 400);
+  }
 }
