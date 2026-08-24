@@ -20,3 +20,4 @@ export * from './motherQr';
 export * from './motherSettings';
 export * from './doctorMessaging';
 export * from './doctorNotification';
+export * from './doctorSettings';

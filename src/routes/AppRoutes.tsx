@@ -31,6 +31,7 @@ import { DoctorReportsPage } from '@/pages/doctor/DoctorReportsPage';
 import { DoctorCarePlansPage } from '@/pages/doctor/DoctorCarePlansPage';
 import { DoctorHospitalPage } from '@/pages/doctor/DoctorHospitalPage';
 import { DoctorProfilePage } from '@/pages/doctor/DoctorProfilePage';
+import { DoctorSettingsPage } from '@/pages/doctor/DoctorSettingsPage';
 import { DoctorMessagesPage } from '@/pages/doctor/DoctorMessagesPage';
 import { DoctorNotificationsPage } from '@/pages/doctor/DoctorNotificationsPage';
 import { HospitalPlaceholderPage } from '@/pages/hospital/HospitalPlaceholderPage';
@@ -81,6 +82,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/doctor/notifications" element={<DoctorNotificationsPage />} />
         <Route path="/doctor/hospital" element={<DoctorHospitalPage />} />
         <Route path="/doctor/profile" element={<DoctorProfilePage />} />
+        <Route path="/doctor/settings" element={<DoctorSettingsPage />} />
         <Route path="/doctor/upload-report" element={<DoctorHospitalUploadFoundation />} />
 
         {/* Hospital Space Routes (placeholder/shell only — full Module 6 not yet implemented) */}

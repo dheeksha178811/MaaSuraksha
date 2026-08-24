@@ -191,6 +191,12 @@ export const DOCTOR_NAV_ITEMS: NavItem[] = [
 
 export const DOCTOR_BOTTOM_NAV_ITEMS: NavItem[] = [
   {
+    title: 'Settings',
+    href: '/doctor/settings',
+    icon: Settings,
+    isPlaceholder: false,
+  },
+  {
     title: 'Logout',
     href: '/auth/login',
     icon: LogOut,

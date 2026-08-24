@@ -8,4 +8,5 @@ export interface DoctorProfile extends BaseUser {
   hospitalName: string;
   experienceYears: number;
   availableDays: string[];
+  location?: string;
 }

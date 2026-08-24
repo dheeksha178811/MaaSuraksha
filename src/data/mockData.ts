@@ -56,6 +56,7 @@ export const mockDoctor: DoctorProfile = {
   hospitalName: 'Sunrise Women & Children Hospital',
   experienceYears: 14,
   availableDays: ['Monday', 'Wednesday', 'Friday', 'Saturday'],
+  location: 'Indiranagar, Bengaluru',
   createdAt: '2025-06-01',
 };
 
