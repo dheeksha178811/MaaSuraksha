@@ -122,7 +122,7 @@ export const BOTTOM_NAV_ITEMS: NavItem[] = [
     title: 'Settings',
     href: '/mother/settings',
     icon: Settings,
-    isPlaceholder: true,
+    isPlaceholder: false,
   },
   {
     title: 'Logout',

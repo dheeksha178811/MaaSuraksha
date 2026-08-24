@@ -13,3 +13,4 @@ export * from './EmptyState';
 export * from './Breadcrumb';
 export * from './RoleCard';
 export * from './Toast';
+export * from './Switch';

@@ -17,3 +17,4 @@ export * from './report';
 export * from './careTeam';
 export * from './motherDoctor';
 export * from './motherQr';
+export * from './motherSettings';
