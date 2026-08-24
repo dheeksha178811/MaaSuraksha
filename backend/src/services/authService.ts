@@ -196,3 +196,39 @@ export async function resetPassword(rawToken: string, newPassword: string): Prom
     throw new AuthError('Invalid or expired reset token.', 400);
   }
 }
+
+/**
+ * Change password for an already-authenticated user (distinct from the
+ * logged-out forgot/reset-password flow above). Any outstanding reset token
+ * is cleared too, so an old reset link can't still work after the user
+ * changes their password proactively.
+ */
+export async function changePassword(
+  userId: string,
+  currentPassword: string,
+  newPassword: string
+): Promise<void> {
+  const result = await pool.query<{ password_hash: string }>(
+    'SELECT password_hash FROM users WHERE id = $1 AND is_active = true',
+    [userId]
+  );
+
+  const row = result.rows[0];
+  if (!row) {
+    throw new AuthError('User not found.', 404);
+  }
+
+  const currentMatches = await bcrypt.compare(currentPassword, row.password_hash);
+  if (!currentMatches) {
+    throw new AuthError('Current password is incorrect.', 401);
+  }
+
+  const passwordHash = await hashPassword(newPassword);
+
+  await pool.query(
+    `UPDATE users
+     SET password_hash = $1, reset_token_hash = NULL, reset_token_expires_at = NULL, updated_at = now()
+     WHERE id = $2`,
+    [passwordHash, userId]
+  );
+}

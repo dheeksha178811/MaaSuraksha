@@ -74,6 +74,32 @@ export function validateForgotPassword(req: Request, res: Response, next: NextFu
   next();
 }
 
+export function validateChangePassword(req: Request, res: Response, next: NextFunction) {
+  const { currentPassword, newPassword } = req.body ?? {};
+  const errors: string[] = [];
+
+  if (!currentPassword || typeof currentPassword !== 'string') {
+    errors.push('currentPassword is required.');
+  }
+  if (!newPassword || typeof newPassword !== 'string' || newPassword.length < MIN_PASSWORD_LENGTH) {
+    errors.push(`newPassword must be at least ${MIN_PASSWORD_LENGTH} characters.`);
+  }
+  if (
+    typeof currentPassword === 'string' &&
+    typeof newPassword === 'string' &&
+    currentPassword === newPassword
+  ) {
+    errors.push('newPassword must be different from currentPassword.');
+  }
+
+  if (errors.length > 0) {
+    res.status(400).json({ success: false, message: 'Validation failed', errors });
+    return;
+  }
+
+  next();
+}
+
 export function validateResetPassword(req: Request, res: Response, next: NextFunction) {
   const { resetToken, newPassword } = req.body ?? {};
   const errors: string[] = [];

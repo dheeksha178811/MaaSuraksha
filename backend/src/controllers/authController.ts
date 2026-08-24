@@ -4,6 +4,7 @@ import {
   loginUser,
   requestPasswordReset,
   resetPassword as resetPasswordService,
+  changePassword as changePasswordService,
   AuthError,
 } from '../services/authService';
 import { logger } from '../utils/logger';
@@ -93,5 +94,26 @@ export async function resetPassword(req: Request, res: Response) {
     }
     logger.error('Reset password failed', error);
     res.status(500).json({ success: false, message: 'Unable to reset password.' });
+  }
+}
+
+export async function changePassword(req: Request, res: Response) {
+  if (!req.user) {
+    res.status(401).json({ success: false, message: 'Authentication token is required.' });
+    return;
+  }
+
+  const { currentPassword, newPassword } = req.body;
+
+  try {
+    await changePasswordService(req.user.id, currentPassword, newPassword);
+    res.status(200).json({ success: true, message: 'Password changed successfully.' });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      res.status(error.status).json({ success: false, message: error.message });
+      return;
+    }
+    logger.error('Change password failed', error);
+    res.status(500).json({ success: false, message: 'Unable to change password.' });
   }
 }
