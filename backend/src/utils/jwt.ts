@@ -18,3 +18,18 @@ export interface TokenPayload {
 export function signToken(payload: TokenPayload): string {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 }
+
+export function verifyToken(token: string): TokenPayload {
+  const decoded = jwt.verify(token, JWT_SECRET);
+
+  if (typeof decoded === 'string') {
+    throw new Error('Unexpected token payload.');
+  }
+
+  const { userId, role } = decoded as Partial<TokenPayload>;
+  if (!userId || !role) {
+    throw new Error('Token payload is missing required fields.');
+  }
+
+  return { userId, role };
+}
