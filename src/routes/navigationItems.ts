@@ -107,7 +107,7 @@ export const MOTHER_NAV_ITEMS: NavItem[] = [
     title: 'My MaaSuraksha QR',
     href: '/mother/qr',
     icon: QrCode,
-    isPlaceholder: true,
+    isPlaceholder: false,
   },
   {
     title: 'MaaSuraksha Assistant',

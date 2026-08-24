@@ -16,6 +16,7 @@ import { MyCarePage } from '@/pages/care/MyCarePage';
 import { MotherHospitalPage } from '@/pages/myHospital/MotherHospitalPage';
 import { MotherDoctorPage } from '@/pages/myDoctor/MotherDoctorPage';
 import { MotherNotificationsPage } from '@/pages/notifications/MotherNotificationsPage';
+import { MotherQrPage } from '@/pages/qr/MotherQrPage';
 import { DoctorHospitalUploadFoundation } from '@/pages/reports/DoctorHospitalUploadFoundation';
 import { HospitalDashboardPlaceholder } from '@/pages/dashboard/HospitalDashboardPlaceholder';
 import { AdminDashboardPlaceholder } from '@/pages/dashboard/AdminDashboardPlaceholder';
@@ -65,7 +66,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/mother/growth-milestones" element={<MotherGrowthMilestonesPage />} />
         <Route path="/mother/hospital" element={<MotherHospitalPage />} />
         <Route path="/mother/notifications" element={<MotherNotificationsPage />} />
-        <Route path="/mother/qr" element={<PlaceholderPage />} />
+        <Route path="/mother/qr" element={<MotherQrPage />} />
 
         {/* Doctor Space Routes */}
         <Route path="/doctor/dashboard" element={<DoctorDashboardPage />} />

@@ -16,3 +16,4 @@ export * from './assistant';
 export * from './report';
 export * from './careTeam';
 export * from './motherDoctor';
+export * from './motherQr';
