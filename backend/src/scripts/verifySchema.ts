@@ -1,6 +1,6 @@
 import { pool } from '../config/db';
 
-const EXPECTED_TABLES = [
+const CORE_IDENTITY_TABLES = [
   'users',
   'mother_profiles',
   'doctor_profiles',
@@ -10,6 +10,9 @@ const EXPECTED_TABLES = [
   'emergency_contacts',
   'patient_care_records',
 ];
+
+const cliTables = process.argv.slice(2);
+const EXPECTED_TABLES = cliTables.length > 0 ? cliTables : CORE_IDENTITY_TABLES;
 
 async function verifySchema() {
   try {
@@ -57,7 +60,7 @@ async function verifySchema() {
       console.error(`\nMissing tables: ${missing.join(', ')}`);
       process.exitCode = 1;
     } else {
-      console.log('\nAll 8 expected tables exist.');
+      console.log(`\nAll ${EXPECTED_TABLES.length} expected tables exist.`);
     }
   } catch (error) {
     console.error('Verification failed:', error);
