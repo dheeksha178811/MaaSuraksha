@@ -38,6 +38,7 @@ export const Header: React.FC<HeaderProps> = ({
   const isDoctor = currentRole === 'doctor';
   const isPlaceholderRole = currentRole === 'hospital' || currentRole === 'admin';
   const doctorAlerts = isDoctor ? getDoctorAlerts(user.id) : [];
+  const unreadNotificationCount = mockNotifications.filter((n) => !n.isRead).length;
 
   const profileRouteByRole: Record<UserRole, string> = {
     mother: '/mother/profile',
@@ -156,7 +157,7 @@ export const Header: React.FC<HeaderProps> = ({
                     {isDoctor ? 'Clinical Alerts' : isPlaceholderRole ? 'Notifications' : 'Care Notifications'}
                   </span>
                   <Badge variant="sandal" size="sm">
-                    {isDoctor ? `${doctorAlerts.length} New` : isPlaceholderRole ? '0 New' : '2 New'}
+                    {isDoctor ? `${doctorAlerts.length} New` : isPlaceholderRole ? '0 New' : `${unreadNotificationCount} New`}
                   </Badge>
                 </div>
                 <button
@@ -235,12 +236,23 @@ export const Header: React.FC<HeaderProps> = ({
               )}
 
               {!isPlaceholderRole && (
-                <div className="pt-2 border-t border-sandal-100 text-center">
-                  <span className="text-[11px] text-warm-muted">
+                <div className="pt-2 border-t border-sandal-100 text-center space-y-1.5">
+                  <span className="text-[11px] text-warm-muted block">
                     {isDoctor
                       ? 'High-risk flags, overdue follow-ups, and reports awaiting review.'
                       : 'Routine reminders for Ananya & baby Vihaan'}
                   </span>
+                  {!isDoctor && (
+                    <button
+                      onClick={() => {
+                        setShowNotifications(false);
+                        navigate('/mother/notifications');
+                      }}
+                      className="text-xs font-semibold text-sandal-700 hover:underline"
+                    >
+                      View All Notifications
+                    </button>
+                  )}
                 </div>
               )}
             </div>

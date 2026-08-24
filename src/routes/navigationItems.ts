@@ -101,7 +101,7 @@ export const MOTHER_NAV_ITEMS: NavItem[] = [
     title: 'Notifications',
     href: '/mother/notifications',
     icon: Bell,
-    isPlaceholder: true,
+    isPlaceholder: false,
   },
   {
     title: 'My MaaSuraksha QR',
