@@ -128,7 +128,15 @@ export async function getProfileForRole(
       result = await pool.query('SELECT * FROM mother_profiles WHERE id = $1', [userId]);
       break;
     case 'doctor':
-      result = await pool.query('SELECT * FROM doctor_profiles WHERE id = $1', [userId]);
+      // doctor_profiles only stores hospital_id — the Doctor frontend
+      // (DoctorSettingsPage/DoctorProfilePage) renders a hospital name, not
+      // an id, so it's resolved here via the same correlated-subquery
+      // pattern used for appointments/growth/vaccinations in Phase 6 Part 4.
+      result = await pool.query(
+        `SELECT *, (SELECT facility_name FROM hospital_profiles WHERE id = doctor_profiles.hospital_id) AS hospital_name
+         FROM doctor_profiles WHERE id = $1`,
+        [userId]
+      );
       break;
     case 'hospital':
       result = await pool.query('SELECT * FROM hospital_profiles WHERE id = $1', [userId]);

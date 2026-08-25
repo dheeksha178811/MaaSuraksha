@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertTriangle,
@@ -26,7 +26,6 @@ import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
 import { Toast } from '@/components/ui/Toast';
 import { cn } from '@/utils/cn';
-import { mockDoctor } from '@/data/mockData';
 import { useMockAuth } from '@/hooks/useMockAuth';
 import {
   DEFAULT_APPOINTMENT_VIEW_OPTIONS,
@@ -34,9 +33,11 @@ import {
   DEFAULT_PATIENT_LIST_OPTIONS,
   PREFERRED_COMMUNICATION_OPTIONS,
   WEEK_DAYS,
-  getDoctorSettings,
-  updateDoctorSettings,
+  defaultDoctorSettings,
 } from '@/data/doctorSettingsMockData';
+import * as doctorService from '@/services/doctorService';
+import { useAsyncData } from '@/hooks/useAsyncData';
+import { AsyncStateView } from '@/pages/hospital/components/AsyncStateView';
 import {
   DefaultAppointmentView,
   DefaultNotificationFilter,
@@ -50,22 +51,39 @@ import { ConfirmDialog } from '@/pages/settings/components/ConfirmDialog';
 import { ChangePasswordModal } from '@/pages/settings/components/ChangePasswordModal';
 import { EditDoctorProfileModal } from '@/pages/doctor/components/EditDoctorProfileModal';
 
-const INITIAL_PROFILE: DoctorProfileFormValues = {
-  phone: mockDoctor.phone || '+91 98450 12345',
-  email: mockDoctor.email,
-  location: mockDoctor.location || '',
-  bio: 'Specializing in high-risk pregnancy management and postpartum recovery care.',
-};
-
-type ToastState = { type: 'success' | 'info'; title: string; message?: string } | null;
+type ToastState = { type: 'success' | 'info' | 'error'; title: string; message?: string } | null;
 
 export const DoctorSettingsPage: React.FC = () => {
   const navigate = useNavigate();
   const { logout } = useMockAuth();
-  const doctorId = mockDoctor.id;
 
-  const [profile, setProfile] = useState<DoctorProfileFormValues>(INITIAL_PROFILE);
-  const [settings, setSettings] = useState<DoctorSettings>(() => getDoctorSettings(doctorId));
+  const [profileState, reloadProfile] = useAsyncData(() => doctorService.getMyProfile(), []);
+  const [settingsState] = useAsyncData(() => doctorService.getSettings(), []);
+
+  const [profile, setProfile] = useState<doctorService.DoctorProfileSummary>({
+    name: '',
+    phone: '',
+    email: '',
+    location: '',
+    bio: '',
+    specialization: '',
+    qualification: '',
+    hospitalName: '',
+    experienceYears: 0,
+    availableDays: [],
+  });
+  // Seeded with this app's existing default preference set (not another
+  // account's identity) so the panel never shows blank toggles while the
+  // real settings are loading — overwritten in place once the real row
+  // arrives, same pattern as MotherSettingsPage.
+  const [settings, setSettings] = useState(defaultDoctorSettings);
+
+  useEffect(() => {
+    if (profileState.status === 'success') setProfile(profileState.data);
+  }, [profileState]);
+  useEffect(() => {
+    if (settingsState.status === 'success') setSettings(settingsState.data);
+  }, [settingsState]);
 
   const [isEditProfileOpen, setEditProfileOpen] = useState(false);
   const [isChangePasswordOpen, setChangePasswordOpen] = useState(false);
@@ -77,57 +95,94 @@ export const DoctorSettingsPage: React.FC = () => {
     window.setTimeout(() => setToast(null), 3000);
   };
 
-  const handleSaveProfile = (values: DoctorProfileFormValues) => {
-    setProfile(values);
+  const persistSettings = async (patch: doctorService.DoctorSettingsPatch, revert: () => void) => {
+    try {
+      await doctorService.updateSettings(patch);
+    } catch (error) {
+      revert();
+      showToast({
+        type: 'error',
+        title: 'Could not save your change.',
+        message: error instanceof Error ? error.message : undefined,
+      });
+    }
+  };
+
+  const handleSaveProfile = async (values: DoctorProfileFormValues) => {
+    const previous = profile;
+    setProfile({ ...profile, ...values });
     setEditProfileOpen(false);
-    showToast({ type: 'success', title: 'Profile updated successfully.' });
+    try {
+      await doctorService.updateProfile(values);
+      showToast({ type: 'success', title: 'Profile updated successfully.' });
+    } catch (error) {
+      setProfile(previous);
+      showToast({
+        type: 'error',
+        title: 'Could not update profile.',
+        message: error instanceof Error ? error.message : undefined,
+      });
+    }
   };
 
   const handleNotificationChange = (key: keyof DoctorSettings['notifications']) => (checked: boolean) => {
-    setSettings((prev) =>
-      updateDoctorSettings(prev, { notifications: { ...prev.notifications, [key]: checked } })
-    );
+    const previous = settings;
+    const notifications = { ...settings.notifications, [key]: checked };
+    setSettings({ ...settings, notifications });
+    persistSettings({ notifications }, () => setSettings(previous));
   };
 
   const handlePreferredMethodChange = (value: PreferredCommunicationMethod) => {
-    setSettings((prev) => updateDoctorSettings(prev, { communication: { ...prev.communication, preferredMethod: value } }));
+    const previous = settings;
+    const communication = { ...settings.communication, preferredMethod: value };
+    setSettings({ ...settings, communication });
+    persistSettings({ communication }, () => setSettings(previous));
   };
 
   const handleCommunicationToggle = (key: 'allowPatientInitiatedMessages' | 'allowVideoConsultationRequests') => (
     checked: boolean
   ) => {
-    setSettings((prev) => updateDoctorSettings(prev, { communication: { ...prev.communication, [key]: checked } }));
+    const previous = settings;
+    const communication = { ...settings.communication, [key]: checked };
+    setSettings({ ...settings, communication });
+    persistSettings({ communication }, () => setSettings(previous));
   };
 
   const handleWorkspaceChange = <K extends keyof DoctorSettings['workspace']>(key: K, value: DoctorSettings['workspace'][K]) => {
-    setSettings((prev) => updateDoctorSettings(prev, { workspace: { ...prev.workspace, [key]: value } }));
+    const previous = settings;
+    const workspace = { ...settings.workspace, [key]: value };
+    setSettings({ ...settings, workspace });
+    persistSettings({ workspace }, () => setSettings(previous));
   };
 
   const handleConsultationModeToggle = (key: keyof DoctorSettings['availability']['consultationModes']) => (
     checked: boolean
   ) => {
-    setSettings((prev) =>
-      updateDoctorSettings(prev, {
-        availability: {
-          ...prev.availability,
-          consultationModes: { ...prev.availability.consultationModes, [key]: checked },
-        },
-      })
-    );
+    const previous = settings;
+    const availability = {
+      ...settings.availability,
+      consultationModes: { ...settings.availability.consultationModes, [key]: checked },
+    };
+    setSettings({ ...settings, availability });
+    persistSettings({ availability }, () => setSettings(previous));
   };
 
   const handleToggleAvailableDay = (day: string) => {
-    setSettings((prev) => {
-      const isActive = prev.availability.availableDays.includes(day);
-      const availableDays = isActive
-        ? prev.availability.availableDays.filter((d) => d !== day)
-        : [...prev.availability.availableDays, day];
-      return updateDoctorSettings(prev, { availability: { ...prev.availability, availableDays } });
-    });
+    const previous = settings;
+    const isActive = settings.availability.availableDays.includes(day);
+    const availableDays = isActive
+      ? settings.availability.availableDays.filter((d) => d !== day)
+      : [...settings.availability.availableDays, day];
+    const availability = { ...settings.availability, availableDays };
+    setSettings({ ...settings, availability });
+    persistSettings({ availability }, () => setSettings(previous));
   };
 
   const handlePrivacyToggle = (key: keyof DoctorSettings['privacy']) => (checked: boolean) => {
-    setSettings((prev) => updateDoctorSettings(prev, { privacy: { ...prev.privacy, [key]: checked } }));
+    const previous = settings;
+    const privacy = { ...settings.privacy, [key]: checked };
+    setSettings({ ...settings, privacy });
+    persistSettings({ privacy }, () => setSettings(previous));
   };
 
   const handlePasswordChanged = () => {
@@ -139,10 +194,22 @@ export const DoctorSettingsPage: React.FC = () => {
   };
 
   const handleConfirmReset = () => {
-    setSettings(getDoctorSettings(doctorId));
-    setProfile(INITIAL_PROFILE);
+    const previous = settings;
+    setSettings(defaultDoctorSettings);
     setResetConfirmOpen(false);
     showToast({ type: 'info', title: 'Settings reset to defaults.' });
+    // Only the five whitelisted sections are sent — defaultDoctorSettings
+    // also carries a doctorId, which validateSettingsUpdate rejects.
+    persistSettings(
+      {
+        notifications: defaultDoctorSettings.notifications,
+        communication: defaultDoctorSettings.communication,
+        workspace: defaultDoctorSettings.workspace,
+        availability: defaultDoctorSettings.availability,
+        privacy: defaultDoctorSettings.privacy,
+      },
+      () => setSettings(previous)
+    );
   };
 
   const handleSignOut = () => {
@@ -165,68 +232,81 @@ export const DoctorSettingsPage: React.FC = () => {
             <UserCircle className="w-5 h-5 text-sandal-600" />
             <h3 className="font-display text-xl font-bold text-warm-brown">Profile & Account</h3>
           </div>
-          <Button variant="outline" size="sm" onClick={() => setEditProfileOpen(true)}>Edit Profile</Button>
+          <Button variant="outline" size="sm" onClick={() => setEditProfileOpen(true)} disabled={profileState.status !== 'success'}>
+            Edit Profile
+          </Button>
         </div>
-        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-          <div className="flex items-start gap-2">
-            <UserCircle className="w-4 h-4 text-sandal-600 shrink-0 mt-0.5" />
-            <div>
-              <dt className="text-xs text-warm-muted">Name</dt>
-              <dd className="font-medium text-warm-brown">{mockDoctor.name}</dd>
-            </div>
-          </div>
-          <div className="flex items-start gap-2">
-            <ShieldCheck className="w-4 h-4 text-sandal-600 shrink-0 mt-0.5" />
-            <div>
-              <dt className="text-xs text-warm-muted">Role</dt>
-              <dd className="font-medium text-warm-brown">Doctor</dd>
-            </div>
-          </div>
-          <div className="flex items-start gap-2">
-            <Stethoscope className="w-4 h-4 text-sandal-600 shrink-0 mt-0.5" />
-            <div>
-              <dt className="text-xs text-warm-muted">Specialty</dt>
-              <dd className="font-medium text-warm-brown">{mockDoctor.specialization}</dd>
-            </div>
-          </div>
-          <div className="flex items-start gap-2">
-            <GraduationCap className="w-4 h-4 text-sandal-600 shrink-0 mt-0.5" />
-            <div>
-              <dt className="text-xs text-warm-muted">Qualification</dt>
-              <dd className="font-medium text-warm-brown">{mockDoctor.qualification}</dd>
-            </div>
-          </div>
-          <div className="flex items-start gap-2">
-            <Phone className="w-4 h-4 text-sandal-600 shrink-0 mt-0.5" />
-            <div>
-              <dt className="text-xs text-warm-muted">Phone Number</dt>
-              <dd className="font-medium text-warm-brown">{profile.phone || '—'}</dd>
-            </div>
-          </div>
-          <div className="flex items-start gap-2">
-            <Mail className="w-4 h-4 text-sandal-600 shrink-0 mt-0.5" />
-            <div>
-              <dt className="text-xs text-warm-muted">Email</dt>
-              <dd className="font-medium text-warm-brown">{profile.email}</dd>
-            </div>
-          </div>
-          <div className="flex items-start gap-2">
-            <Building2 className="w-4 h-4 text-sandal-600 shrink-0 mt-0.5" />
-            <div>
-              <dt className="text-xs text-warm-muted">Hospital / Facility</dt>
-              <dd className="font-medium text-warm-brown">{mockDoctor.hospitalName}</dd>
-            </div>
-          </div>
-          <div className="flex items-start gap-2">
-            <MapPin className="w-4 h-4 text-sandal-600 shrink-0 mt-0.5" />
-            <div>
-              <dt className="text-xs text-warm-muted">Location</dt>
-              <dd className="font-medium text-warm-brown">{profile.location || '—'}</dd>
-            </div>
-          </div>
-        </dl>
-        {profile.bio && (
-          <p className="text-xs text-warm-muted leading-relaxed pt-3 border-t border-sandal-100/70">{profile.bio}</p>
+        {profileState.status !== 'success' ? (
+          <AsyncStateView
+            status={profileState.status}
+            loadingLabel="Loading your profile…"
+            errorMessage={profileState.status === 'error' ? profileState.message : undefined}
+            onRetry={reloadProfile}
+          />
+        ) : (
+          <>
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+              <div className="flex items-start gap-2">
+                <UserCircle className="w-4 h-4 text-sandal-600 shrink-0 mt-0.5" />
+                <div>
+                  <dt className="text-xs text-warm-muted">Name</dt>
+                  <dd className="font-medium text-warm-brown">{profile.name}</dd>
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <ShieldCheck className="w-4 h-4 text-sandal-600 shrink-0 mt-0.5" />
+                <div>
+                  <dt className="text-xs text-warm-muted">Role</dt>
+                  <dd className="font-medium text-warm-brown">Doctor</dd>
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <Stethoscope className="w-4 h-4 text-sandal-600 shrink-0 mt-0.5" />
+                <div>
+                  <dt className="text-xs text-warm-muted">Specialty</dt>
+                  <dd className="font-medium text-warm-brown">{profile.specialization || '—'}</dd>
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <GraduationCap className="w-4 h-4 text-sandal-600 shrink-0 mt-0.5" />
+                <div>
+                  <dt className="text-xs text-warm-muted">Qualification</dt>
+                  <dd className="font-medium text-warm-brown">{profile.qualification || '—'}</dd>
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <Phone className="w-4 h-4 text-sandal-600 shrink-0 mt-0.5" />
+                <div>
+                  <dt className="text-xs text-warm-muted">Phone Number</dt>
+                  <dd className="font-medium text-warm-brown">{profile.phone || '—'}</dd>
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <Mail className="w-4 h-4 text-sandal-600 shrink-0 mt-0.5" />
+                <div>
+                  <dt className="text-xs text-warm-muted">Email</dt>
+                  <dd className="font-medium text-warm-brown">{profile.email}</dd>
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <Building2 className="w-4 h-4 text-sandal-600 shrink-0 mt-0.5" />
+                <div>
+                  <dt className="text-xs text-warm-muted">Hospital / Facility</dt>
+                  <dd className="font-medium text-warm-brown">{profile.hospitalName || '—'}</dd>
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <MapPin className="w-4 h-4 text-sandal-600 shrink-0 mt-0.5" />
+                <div>
+                  <dt className="text-xs text-warm-muted">Location</dt>
+                  <dd className="font-medium text-warm-brown">{profile.location || '—'}</dd>
+                </div>
+              </div>
+            </dl>
+            {profile.bio && (
+              <p className="text-xs text-warm-muted leading-relaxed pt-3 border-t border-sandal-100/70">{profile.bio}</p>
+            )}
+          </>
         )}
       </Card>
 
