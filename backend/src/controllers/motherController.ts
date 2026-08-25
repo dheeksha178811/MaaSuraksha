@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { listMyGrowthMeasurements, logMyGrowthMeasurement } from '../services/growthMeasurementService';
+import { listMyMilestones, markMyMilestoneAchieved } from '../services/milestoneService';
 import { AuthError } from '../services/authService';
 import { logger } from '../utils/logger';
 
@@ -48,5 +49,43 @@ export async function logGrowthMeasurement(req: Request, res: Response) {
     }
     logger.error('Log growth measurement failed', error);
     res.status(500).json({ success: false, message: 'Unable to log growth measurement.' });
+  }
+}
+
+export async function getMyMilestones(req: Request, res: Response) {
+  if (!req.user) {
+    res.status(401).json({ success: false, message: 'Authentication token is required.' });
+    return;
+  }
+
+  try {
+    const milestones = await listMyMilestones(req.user.id);
+    res.status(200).json({ success: true, milestones });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      res.status(error.status).json({ success: false, message: error.message });
+      return;
+    }
+    logger.error('Fetch milestones failed', error);
+    res.status(500).json({ success: false, message: 'Unable to fetch milestones.' });
+  }
+}
+
+export async function markMilestoneAchieved(req: Request, res: Response) {
+  if (!req.user) {
+    res.status(401).json({ success: false, message: 'Authentication token is required.' });
+    return;
+  }
+
+  try {
+    const milestone = await markMyMilestoneAchieved(req.user.id, req.params.milestoneId);
+    res.status(200).json({ success: true, milestone });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      res.status(error.status).json({ success: false, message: error.message });
+      return;
+    }
+    logger.error('Mark milestone achieved failed', error);
+    res.status(500).json({ success: false, message: 'Unable to mark milestone achieved.' });
   }
 }
