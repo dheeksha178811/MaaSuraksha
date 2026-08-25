@@ -15,12 +15,13 @@ import { getMyChildren as getMyChildrenService } from '../services/childProfileS
 import { logger } from '../utils/logger';
 
 export async function register(req: Request, res: Response) {
-  const { email, password, role, phone, profile } = req.body;
+  const { email, password, name, role, phone, profile } = req.body;
 
   try {
     const { user, token, profile: createdProfile } = await registerUser(
       email,
       password,
+      name,
       role,
       phone,
       profile ?? {}

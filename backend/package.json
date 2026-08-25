@@ -9,7 +9,8 @@
     "start": "node dist/server.js",
     "test:db": "tsx src/scripts/testConnection.ts",
     "migrate": "tsx src/scripts/migrate.ts",
-    "verify:schema": "tsx src/scripts/verifySchema.ts"
+    "verify:schema": "tsx src/scripts/verifySchema.ts",
+    "seed:demo": "tsx src/scripts/seedDemoData.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

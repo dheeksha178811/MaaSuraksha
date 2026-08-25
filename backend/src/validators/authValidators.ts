@@ -6,7 +6,7 @@ const VALID_ROLES = ['mother', 'doctor', 'hospital', 'admin'];
 const MIN_PASSWORD_LENGTH = 8;
 
 export function validateRegister(req: Request, res: Response, next: NextFunction) {
-  const { email, password, role, phone, profile } = req.body ?? {};
+  const { email, password, name, role, phone, profile } = req.body ?? {};
   const errors: string[] = [];
 
   if (!email || typeof email !== 'string' || !EMAIL_REGEX.test(email)) {
@@ -14,6 +14,9 @@ export function validateRegister(req: Request, res: Response, next: NextFunction
   }
   if (!password || typeof password !== 'string' || password.length < MIN_PASSWORD_LENGTH) {
     errors.push(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
+  }
+  if (!name || typeof name !== 'string' || name.trim().length === 0) {
+    errors.push('name is required.');
   }
   if (!role || typeof role !== 'string' || !VALID_ROLES.includes(role)) {
     errors.push(`Role must be one of: ${VALID_ROLES.join(', ')}.`);

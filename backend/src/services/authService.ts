@@ -34,6 +34,7 @@ export class AuthError extends Error {
 export interface AuthUser {
   id: string;
   email: string;
+  name: string;
   role: string;
   phone: string | null;
   avatarUrl: string | null;
@@ -43,6 +44,7 @@ export interface AuthUser {
 interface UserRow {
   id: string;
   email: string;
+  name: string;
   password_hash: string;
   phone: string | null;
   role: string;
@@ -55,6 +57,7 @@ function toAuthUser(row: UserRow): AuthUser {
   return {
     id: row.id,
     email: row.email,
+    name: row.name,
     role: row.role,
     phone: row.phone,
     avatarUrl: row.avatar_url,
@@ -65,6 +68,7 @@ function toAuthUser(row: UserRow): AuthUser {
 export async function registerUser(
   email: string,
   password: string,
+  name: string,
   role: string,
   phone: string | undefined,
   profile: Record<string, unknown>
@@ -84,10 +88,10 @@ export async function registerUser(
     // profile insert fails for any reason, the user insert is rolled back
     // too, so a registration attempt can never leave an orphan user row.
     const userResult = await client.query<UserRow>(
-      `INSERT INTO users (email, password_hash, role, phone)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id, email, password_hash, phone, role, avatar_url, is_active, created_at`,
-      [email, passwordHash, role, phone ?? null]
+      `INSERT INTO users (email, password_hash, name, role, phone)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, email, name, password_hash, phone, role, avatar_url, is_active, created_at`,
+      [email, passwordHash, name, role, phone ?? null]
     );
     const userRow = userResult.rows[0];
 
@@ -125,7 +129,7 @@ export async function registerUser(
 
 export async function loginUser(email: string, password: string): Promise<{ user: AuthUser; token: string }> {
   const result = await pool.query<UserRow>(
-    `SELECT id, email, password_hash, phone, role, avatar_url, is_active, created_at
+    `SELECT id, email, name, password_hash, phone, role, avatar_url, is_active, created_at
      FROM users WHERE email = $1`,
     [email]
   );
@@ -157,7 +161,7 @@ export interface CurrentUser extends AuthUser {
  */
 export async function getCurrentUser(userId: string): Promise<CurrentUser> {
   const result = await pool.query<UserRow>(
-    `SELECT id, email, password_hash, phone, role, avatar_url, is_active, created_at
+    `SELECT id, email, name, password_hash, phone, role, avatar_url, is_active, created_at
      FROM users WHERE id = $1`,
     [userId]
   );
@@ -208,7 +212,7 @@ async function updateUserRow(
          email = COALESCE($3, email),
          updated_at = now()
      WHERE id = $1
-     RETURNING id, email, password_hash, phone, role, avatar_url, is_active, created_at`,
+     RETURNING id, email, name, password_hash, phone, role, avatar_url, is_active, created_at`,
     [userId, patch.phone ?? null, patch.email ?? null]
   );
   return result.rows[0] ?? null;
@@ -277,7 +281,7 @@ export async function updateCurrentUser(
       throw new AuthError('Profile not found for this account.', 404);
     }
     const result = await pool.query<UserRow>(
-      `SELECT id, email, password_hash, phone, role, avatar_url, is_active, created_at
+      `SELECT id, email, name, password_hash, phone, role, avatar_url, is_active, created_at
        FROM users WHERE id = $1`,
       [userId]
     );
