@@ -4,6 +4,7 @@ import { listMyMilestones, markMyMilestoneAchieved } from '../services/milestone
 import { listMyVaccinations, toggleMyVaccinationReminder } from '../services/vaccinationService';
 import { listMyDailyGoals, incrementMyDailyGoal, decrementMyDailyGoal } from '../services/dailyGoalService';
 import { listMyNutritionReminders, toggleMyNutritionReminder } from '../services/nutritionReminderService';
+import { listMyAppointments, requestMyAppointment } from '../services/appointmentService';
 import { AuthError } from '../services/authService';
 import { logger } from '../utils/logger';
 
@@ -223,5 +224,50 @@ export async function toggleNutritionReminder(req: Request, res: Response) {
     }
     logger.error('Toggle nutrition reminder failed', error);
     res.status(500).json({ success: false, message: 'Unable to toggle nutrition reminder.' });
+  }
+}
+
+export async function getMyAppointments(req: Request, res: Response) {
+  if (!req.user) {
+    res.status(401).json({ success: false, message: 'Authentication token is required.' });
+    return;
+  }
+
+  try {
+    const appointments = await listMyAppointments(req.user.id);
+    res.status(200).json({ success: true, appointments });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      res.status(error.status).json({ success: false, message: error.message });
+      return;
+    }
+    logger.error('Fetch appointments failed', error);
+    res.status(500).json({ success: false, message: 'Unable to fetch appointments.' });
+  }
+}
+
+export async function requestAppointment(req: Request, res: Response) {
+  if (!req.user) {
+    res.status(401).json({ success: false, message: 'Authentication token is required.' });
+    return;
+  }
+
+  const { category, reason, preferredDate, preferredTime } = req.body ?? {};
+
+  try {
+    const appointment = await requestMyAppointment(req.user.id, {
+      category,
+      reason,
+      apptDate: preferredDate,
+      apptTime: preferredTime,
+    });
+    res.status(201).json({ success: true, appointment });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      res.status(error.status).json({ success: false, message: error.message });
+      return;
+    }
+    logger.error('Request appointment failed', error);
+    res.status(500).json({ success: false, message: 'Unable to request appointment.' });
   }
 }
