@@ -20,15 +20,21 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
 import { useMockAuth } from '@/hooks/useMockAuth';
+import { AuthNetworkError } from '@/services/authApi';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const { loginAsRole } = useMockAuth();
+  const { loginAsRole, loginWithCredentials } = useMockAuth();
 
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const [email, setEmail] = useState<string>('ananya.kapoor@example.com');
-  const [password, setPassword] = useState<string>('••••••••');
+  // No default value here: Part 3 sends this to the real backend, and a
+  // pre-filled placeholder would look like a working credential without
+  // being one. The demo accounts' shared password is seed-script output,
+  // not something to embed in frontend source.
+  const [password, setPassword] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   const roleIcons = {
     mother: HeartHandshake,
@@ -39,24 +45,36 @@ export const LoginPage: React.FC = () => {
 
   const handleRoleSelect = (role: UserRole) => {
     setSelectedRole(role);
+    setLoginError(null);
     // Set appropriate demo email for role
     if (role === 'mother') setEmail('ananya.kapoor@example.com');
-    if (role === 'doctor') setEmail('dr.priya.menon@sunrisewch.org');
+    if (role === 'doctor') setEmail('priya.menon@sunrisewch.org');
     if (role === 'hospital') setEmail('care@sunrisewch.org');
     if (role === 'admin') setEmail('admin.director@health.gov.in');
   };
 
-  const handleMockLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedRole) return;
 
     setIsLoading(true);
-    // Simulate lightweight transition
-    setTimeout(() => {
-      loginAsRole(selectedRole);
-      const targetPath = ROLE_CONFIGS[selectedRole].defaultPath;
-      navigate(targetPath);
-    }, 400);
+    setLoginError(null);
+    try {
+      const realUser = await loginWithCredentials(email, password);
+      navigate(ROLE_CONFIGS[realUser.role].defaultPath);
+    } catch (error) {
+      if (error instanceof AuthNetworkError) {
+        // Backend unreachable — fall back to the mock flow for the
+        // originally selected role, same as before real auth existed.
+        loginAsRole(selectedRole);
+        navigate(ROLE_CONFIGS[selectedRole].defaultPath);
+        return;
+      }
+      // Backend reachable but login failed (bad credentials, etc) —
+      // surface it rather than silently granting mock access.
+      setLoginError(error instanceof Error ? error.message : 'Unable to sign in. Please try again.');
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -136,7 +154,7 @@ export const LoginPage: React.FC = () => {
               </button>
             </div>
 
-            <form onSubmit={handleMockLogin} className="space-y-4">
+            <form onSubmit={handleLogin} className="space-y-4">
               <Input
                 label="Registered Email / ID"
                 type="email"
@@ -155,12 +173,13 @@ export const LoginPage: React.FC = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 leftIcon={<Lock className="w-4 h-4" />}
                 placeholder="Enter password"
+                error={loginError ?? undefined}
               />
 
               <div className="p-3 rounded-xl bg-warm-cream/70 border border-sandal-100 text-xs text-warm-muted flex items-start gap-2">
                 <CheckCircle className="w-4 h-4 text-sage-text shrink-0 mt-0.5" />
                 <span>
-                  <strong>Module 0 Notice:</strong> Mock authentication enabled. Clicking sign in will transition directly into the {ROLE_CONFIGS[selectedRole].title} workspace.
+                  <strong>Module 0 Notice:</strong> Signs in against the live MaaSuraksha server; if it's unreachable, this falls back to the {ROLE_CONFIGS[selectedRole].title} mock workspace.
                 </span>
               </div>
 
