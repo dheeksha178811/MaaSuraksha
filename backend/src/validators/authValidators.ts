@@ -149,6 +149,35 @@ export function validateUpdateMe(req: Request, res: Response, next: NextFunction
   next();
 }
 
+const EMERGENCY_CONTACT_ALLOWED_KEYS = ['name', 'relation', 'phone'];
+
+export function validateEmergencyContact(req: Request, res: Response, next: NextFunction) {
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const errors: string[] = [];
+
+  const unknownKeys = Object.keys(body).filter((key) => !EMERGENCY_CONTACT_ALLOWED_KEYS.includes(key));
+  if (unknownKeys.length > 0) {
+    errors.push(`Unsupported field(s): ${unknownKeys.join(', ')}.`);
+  }
+
+  if (!body.name || typeof body.name !== 'string' || body.name.trim().length === 0) {
+    errors.push('name is required.');
+  }
+  if (!body.phone || typeof body.phone !== 'string' || body.phone.trim().length === 0) {
+    errors.push('phone is required.');
+  }
+  if (body.relation !== undefined && body.relation !== null && typeof body.relation !== 'string') {
+    errors.push('relation must be a string.');
+  }
+
+  if (errors.length > 0) {
+    res.status(400).json({ success: false, message: 'Validation failed', errors });
+    return;
+  }
+
+  next();
+}
+
 export function validateResetPassword(req: Request, res: Response, next: NextFunction) {
   const { resetToken, newPassword } = req.body ?? {};
   const errors: string[] = [];
