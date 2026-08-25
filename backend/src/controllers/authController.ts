@@ -11,6 +11,7 @@ import {
 } from '../services/authService';
 import { getPrimaryEmergencyContact, upsertPrimaryEmergencyContact } from '../services/emergencyContactService';
 import { getSettingsForRole, upsertSettingsForRole } from '../services/settingsService';
+import { getMyChildren as getMyChildrenService } from '../services/childProfileService';
 import { logger } from '../utils/logger';
 
 export async function register(req: Request, res: Response) {
@@ -216,6 +217,25 @@ export async function updateMySettings(req: Request, res: Response) {
     }
     logger.error('Update settings failed', error);
     res.status(500).json({ success: false, message: 'Unable to update settings.' });
+  }
+}
+
+export async function getMyChildren(req: Request, res: Response) {
+  if (!req.user) {
+    res.status(401).json({ success: false, message: 'Authentication token is required.' });
+    return;
+  }
+
+  try {
+    const children = await getMyChildrenService(req.user.id);
+    res.status(200).json({ success: true, children });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      res.status(error.status).json({ success: false, message: error.message });
+      return;
+    }
+    logger.error('Fetch children failed', error);
+    res.status(500).json({ success: false, message: 'Unable to fetch children.' });
   }
 }
 
