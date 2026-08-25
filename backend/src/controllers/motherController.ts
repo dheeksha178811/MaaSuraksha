@@ -3,6 +3,7 @@ import { listMyGrowthMeasurements, logMyGrowthMeasurement } from '../services/gr
 import { listMyMilestones, markMyMilestoneAchieved } from '../services/milestoneService';
 import { listMyVaccinations, toggleMyVaccinationReminder } from '../services/vaccinationService';
 import { listMyDailyGoals, incrementMyDailyGoal, decrementMyDailyGoal } from '../services/dailyGoalService';
+import { listMyNutritionReminders, toggleMyNutritionReminder } from '../services/nutritionReminderService';
 import { AuthError } from '../services/authService';
 import { logger } from '../utils/logger';
 
@@ -184,5 +185,43 @@ export async function decrementDailyGoal(req: Request, res: Response) {
     }
     logger.error('Decrement daily goal failed', error);
     res.status(500).json({ success: false, message: 'Unable to decrement daily goal.' });
+  }
+}
+
+export async function getMyNutritionReminders(req: Request, res: Response) {
+  if (!req.user) {
+    res.status(401).json({ success: false, message: 'Authentication token is required.' });
+    return;
+  }
+
+  try {
+    const reminders = await listMyNutritionReminders(req.user.id);
+    res.status(200).json({ success: true, reminders });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      res.status(error.status).json({ success: false, message: error.message });
+      return;
+    }
+    logger.error('Fetch nutrition reminders failed', error);
+    res.status(500).json({ success: false, message: 'Unable to fetch nutrition reminders.' });
+  }
+}
+
+export async function toggleNutritionReminder(req: Request, res: Response) {
+  if (!req.user) {
+    res.status(401).json({ success: false, message: 'Authentication token is required.' });
+    return;
+  }
+
+  try {
+    const reminder = await toggleMyNutritionReminder(req.user.id, req.params.reminderId);
+    res.status(200).json({ success: true, reminder });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      res.status(error.status).json({ success: false, message: error.message });
+      return;
+    }
+    logger.error('Toggle nutrition reminder failed', error);
+    res.status(500).json({ success: false, message: 'Unable to toggle nutrition reminder.' });
   }
 }

@@ -9,11 +9,14 @@ import {
   getMyDailyGoals,
   incrementDailyGoal,
   decrementDailyGoal,
+  getMyNutritionReminders,
+  toggleNutritionReminder,
 } from '../controllers/motherController';
 import { validateLogGrowthMeasurement } from '../validators/growthValidators';
 import { validateMarkMilestoneAchieved } from '../validators/milestoneValidators';
 import { validateToggleVaccinationReminder } from '../validators/vaccinationValidators';
 import { validateAdjustDailyGoal } from '../validators/dailyGoalValidators';
+import { validateToggleNutritionReminder } from '../validators/nutritionReminderValidators';
 import { authenticate } from '../middleware/authenticate';
 import { requireRole } from '../middleware/requireRole';
 
@@ -28,5 +31,7 @@ router.patch('/vaccinations/:vaccinationId/reminder', authenticate, requireRole(
 router.get('/daily-goals', authenticate, requireRole('mother'), getMyDailyGoals);
 router.patch('/daily-goals/:goalId/increment', authenticate, requireRole('mother'), validateAdjustDailyGoal, incrementDailyGoal);
 router.patch('/daily-goals/:goalId/decrement', authenticate, requireRole('mother'), validateAdjustDailyGoal, decrementDailyGoal);
+router.get('/nutrition-reminders', authenticate, requireRole('mother'), getMyNutritionReminders);
+router.patch('/nutrition-reminders/:reminderId/toggle', authenticate, requireRole('mother'), validateToggleNutritionReminder, toggleNutritionReminder);
 
 export default router;
