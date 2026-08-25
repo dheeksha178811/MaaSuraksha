@@ -5,8 +5,10 @@ import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Badge } from '@/components/ui/Badge';
-import { mockDoctor, mockHospital } from '@/data/mockData';
-import { getPatientsForDoctor } from '@/data/doctorPatientsMockData';
+import { mockHospital } from '@/data/mockData';
+import * as doctorService from '@/services/doctorService';
+import { useAsyncData } from '@/hooks/useAsyncData';
+import { AsyncStateView } from '@/pages/hospital/components/AsyncStateView';
 import { PatientCard } from '@/pages/doctor/components/PatientCard';
 import { PatientStage } from '@/types';
 
@@ -20,7 +22,8 @@ export const MyPatientsPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [stageFilter, setStageFilter] = useState<'ALL' | PatientStage>('ALL');
 
-  const allPatients = useMemo(() => getPatientsForDoctor(mockDoctor.id), []);
+  const [patientsState, reloadPatients] = useAsyncData(() => doctorService.getMyPatients(), []);
+  const allPatients = patientsState.status === 'success' ? patientsState.data : [];
 
   const filteredPatients = useMemo(() => {
     let results = allPatients;
@@ -72,7 +75,14 @@ export const MyPatientsPage: React.FC = () => {
         </div>
       </Card>
 
-      {filteredPatients.length === 0 ? (
+      {patientsState.status !== 'success' ? (
+        <AsyncStateView
+          status={patientsState.status}
+          loadingLabel="Loading your patients…"
+          errorMessage={patientsState.status === 'error' ? patientsState.message : undefined}
+          onRetry={reloadPatients}
+        />
+      ) : filteredPatients.length === 0 ? (
         <Card className="bg-warm-ivory border-sandal-100">
           <div className="text-center py-12">
             <Users className="w-10 h-10 text-sandal-300 mx-auto mb-4" />

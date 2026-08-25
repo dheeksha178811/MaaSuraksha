@@ -24,15 +24,16 @@ import { cn } from '@/utils/cn';
 import { mockDoctor, mockHospital, mockVaccinations, mockChild } from '@/data/mockData';
 import {
   getAppointmentsForPatient,
-  getChildForPatient,
   getConsultationNotesForPatient,
   getMedicationsForPatient,
-  getPatientById,
   getRecommendationsForPatient,
   getReportsForPatient,
   DOCTOR_TODAY_ISO,
 } from '@/data/doctorPatientsMockData';
 import { REPORT_CATEGORIES } from '@/data/reportsMockData';
+import * as doctorService from '@/services/doctorService';
+import { useAsyncData } from '@/hooks/useAsyncData';
+import { AsyncStateView } from '@/pages/hospital/components/AsyncStateView';
 import { CareRecommendation, ConsultationNote, DoctorAppointment, Report } from '@/types';
 import { ReportDetailsModal } from '@/pages/reports/ReportDetailsModal';
 import {
@@ -55,8 +56,11 @@ type TabId = 'overview' | 'stage' | 'reports' | 'medications' | 'careplan' | 'ap
 export const PatientCareWorkspacePage: React.FC = () => {
   const { patientId } = useParams<{ patientId: string }>();
 
-  const patient = patientId ? getPatientById(patientId) : undefined;
-  const isAssignedToCurrentDoctor = patient?.doctorId === mockDoctor.id;
+  const [patientState] = useAsyncData(
+    () => (patientId ? doctorService.getPatientDetail(patientId) : Promise.reject(new Error('No patient id in the URL.'))),
+    [patientId]
+  );
+  const patient = patientState.status === 'success' ? patientState.data : undefined;
 
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [reports, setReports] = useState<Report[]>(() => (patientId ? getReportsForPatient(patientId) : []));
@@ -76,7 +80,7 @@ export const PatientCareWorkspacePage: React.FC = () => {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
 
-  const child = useMemo(() => (patient ? getChildForPatient(patient) : undefined), [patient]);
+  const child = patient?.child;
   const medications = useMemo(() => (patientId ? getMedicationsForPatient(patientId) : []), [patientId]);
 
   const nextFollowUp = useMemo(
@@ -87,7 +91,21 @@ export const PatientCareWorkspacePage: React.FC = () => {
     [appointments]
   );
 
-  if (!patient || !isAssignedToCurrentDoctor) {
+  if (patientState.status === 'loading') {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Loading Patient…" subtitle="Fetching this patient's care record." />
+        <AsyncStateView status="loading" loadingLabel="Loading patient…" />
+      </div>
+    );
+  }
+
+  if (!patient) {
+    // Covers both a genuine 404 (patient not found, or found but assigned to
+    // a different doctor — the backend's WHERE doctor_id = $2 makes those
+    // indistinguishable by design) and any other fetch failure; either way
+    // this doctor can't proceed to view a patient, so the same existing
+    // empty state applies.
     return (
       <div className="space-y-6">
         <PageHeader

@@ -14,12 +14,17 @@
 
 import { API_BASE_URL, AuthApiError, AuthNetworkError, TOKEN_STORAGE_KEY } from '@/services/authApi';
 import {
+  AssignedPatient,
+  ChildProfile,
   DoctorAvailabilityPreferences,
   DoctorCommunicationPreferences,
   DoctorNotificationPreferences,
   DoctorPrivacySecurityPreferences,
   DoctorProfileFormValues,
   DoctorWorkspacePreferences,
+  PatientRiskLevel,
+  PatientStage,
+  PatientStatus,
 } from '@/types';
 import { defaultDoctorSettings } from '@/data/doctorSettingsMockData';
 
@@ -154,4 +159,138 @@ export async function getSettings() {
 export async function updateSettings(patch_: DoctorSettingsPatch) {
   const body = await patch('/auth/me/settings', patch_);
   return mergeSettings(body.settings as DoctorSettingsRowShape | null);
+}
+
+// --- Patients (My Patients roster) --------------------------------------------
+
+interface AssignedPatientRowShape {
+  patient_id: string;
+  mother_id: string;
+  doctor_id: string;
+  hospital_id: string;
+  child_id: string | null;
+  name: string;
+  phone: string | null;
+  age: number | null;
+  blood_group: string | null;
+  location: string | null;
+  stage: string | null;
+  status: string | null;
+  risk_level: string | null;
+  pregnancy_week: number | null;
+  expected_delivery_date: string | null;
+  gravida: string | null;
+  anc_visits_completed: number | null;
+  anc_visits_planned: number | null;
+  high_risk_factors: string[] | null;
+  delivery_date: string | null;
+  delivery_type: string | null;
+  postpartum_weeks: number | null;
+  recovery_status: string | null;
+  breastfeeding_status: string | null;
+  last_visit_date: string | null;
+  registered_on: string;
+}
+
+function toAssignedPatient(row: AssignedPatientRowShape): AssignedPatient {
+  const stage = (row.stage as PatientStage) ?? 'ANTENATAL';
+  return {
+    patientId: row.patient_id,
+    motherId: row.mother_id,
+    doctorId: row.doctor_id,
+    hospitalId: row.hospital_id,
+    childId: row.child_id ?? undefined,
+    name: row.name,
+    age: row.age ?? 0,
+    phone: row.phone ?? '',
+    bloodGroup: row.blood_group ?? '',
+    location: row.location ?? '',
+    stage,
+    status: (row.status as PatientStatus) ?? 'NEW',
+    riskLevel: (row.risk_level as PatientRiskLevel) ?? 'LOW',
+    antenatal:
+      stage === 'ANTENATAL'
+        ? {
+            pregnancyWeek: row.pregnancy_week ?? 0,
+            expectedDeliveryDate: row.expected_delivery_date ?? '',
+            gravida: row.gravida ?? '',
+            ancVisitsCompleted: row.anc_visits_completed ?? 0,
+            ancVisitsPlanned: row.anc_visits_planned ?? 0,
+            highRiskFactors: row.high_risk_factors ?? [],
+          }
+        : undefined,
+    postnatal:
+      stage === 'POSTNATAL'
+        ? {
+            deliveryDate: row.delivery_date ?? '',
+            deliveryType: (row.delivery_type as 'Normal' | 'C-Section' | 'Assisted') ?? 'Normal',
+            postpartumWeeks: row.postpartum_weeks ?? 0,
+            recoveryStatus: row.recovery_status ?? '',
+            breastfeedingStatus: row.breastfeeding_status ?? '',
+          }
+        : undefined,
+    lastVisitDate: row.last_visit_date ?? undefined,
+    registeredOn: row.registered_on,
+  };
+}
+
+export async function getMyPatients(): Promise<AssignedPatient[]> {
+  const body = await get('/doctor/patients');
+  return ((body.patients as AssignedPatientRowShape[]) ?? []).map(toAssignedPatient);
+}
+
+// --- Single patient detail (Patient Care Workspace) ---------------------------
+
+interface AssignedPatientDetailRowShape extends AssignedPatientRowShape {
+  child_name: string | null;
+  child_gender: string | null;
+  child_date_of_birth: string | null;
+  child_birth_weight_kg: string | null;
+  child_current_weight_kg: string | null;
+  child_blood_group: string | null;
+  child_birth_hospital_name: string | null;
+}
+
+export interface DoctorPatientDetail extends AssignedPatient {
+  // Real child_profiles data resolved via patient_care_records.child_id —
+  // absent (not fabricated) when the assignment has no child on file yet
+  // (e.g. still antenatal) or the schema value itself is null.
+  child?: ChildProfile;
+}
+
+function ageDisplayFromDob(dob: string | null): string {
+  if (!dob) return 'Unknown age';
+  const days = Math.max(0, Math.floor((Date.now() - new Date(dob).getTime()) / (1000 * 60 * 60 * 24)));
+  const weeks = Math.floor(days / 7);
+  if (weeks < 12) return `${weeks} week${weeks === 1 ? '' : 's'}`;
+  const months = Math.floor(days / 30);
+  return `${months} month${months === 1 ? '' : 's'}`;
+}
+
+function toDoctorPatientDetail(row: AssignedPatientDetailRowShape): DoctorPatientDetail {
+  const patient = toAssignedPatient(row);
+  const child: ChildProfile | undefined = row.child_name
+    ? {
+        id: patient.childId ?? '',
+        motherId: patient.motherId,
+        name: row.child_name,
+        gender: (row.child_gender as ChildProfile['gender']) ?? 'boy',
+        dateOfBirth: row.child_date_of_birth ?? '',
+        ageDisplay: ageDisplayFromDob(row.child_date_of_birth),
+        birthWeightKg: row.child_birth_weight_kg != null ? Number(row.child_birth_weight_kg) : 0,
+        currentWeightKg: row.child_current_weight_kg != null ? Number(row.child_current_weight_kg) : 0,
+        bloodGroup: row.child_blood_group ?? '',
+        birthHospital: row.child_birth_hospital_name ?? '',
+      }
+    : undefined;
+  return { ...patient, child };
+}
+
+// Throws (via authedFetch's AuthApiError) on a 404 — a patient id that
+// doesn't exist, or exists but isn't assigned to the signed-in doctor;
+// the backend's WHERE pcr.doctor_id = $2 makes those indistinguishable by
+// design, so the frontend doesn't need a separate ownership check.
+export async function getPatientDetail(patientId: string): Promise<DoctorPatientDetail> {
+  const body = await get(`/doctor/patients/${patientId}`);
+  return toDoctorPatientDetail(body.patient as AssignedPatientDetailRowShape);
 }
