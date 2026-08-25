@@ -178,6 +178,61 @@ export function validateEmergencyContact(req: Request, res: Response, next: Next
   next();
 }
 
+const SETTINGS_FIELDS_BY_ROLE: Record<string, string[]> = {
+  mother: ['language', 'notifications', 'reminders', 'privacy'],
+  doctor: ['notifications', 'communication', 'workspace', 'availability', 'privacy'],
+  hospital: ['facility', 'notifications', 'operational', 'privacy'],
+  admin: ['notifications', 'program', 'privacy'],
+};
+const SETTINGS_LANGUAGES = ['en', 'hi', 'kn', 'ml'];
+
+/**
+ * Runs after `authenticate`, so req.user.role picks which section names are
+ * valid — mirrors validateUpdateMe's role-aware whitelist. Section values
+ * are only checked for shape (plain object, or the language enum) since
+ * they're stored as JSONB preference blobs; the whitelist is at the section
+ * level, not every nested toggle within one.
+ */
+export function validateSettingsUpdate(req: Request, res: Response, next: NextFunction) {
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const errors: string[] = [];
+
+  const role = req.user?.role ?? '';
+  const allowed = SETTINGS_FIELDS_BY_ROLE[role] ?? [];
+
+  const unknownKeys = Object.keys(body).filter((key) => !allowed.includes(key));
+  if (unknownKeys.length > 0) {
+    errors.push(`Unsupported field(s): ${unknownKeys.join(', ')}.`);
+  }
+
+  if (Object.keys(body).length === 0) {
+    errors.push('At least one settings section must be provided.');
+  }
+
+  for (const key of allowed) {
+    if (body[key] === undefined) continue;
+
+    if (key === 'language') {
+      if (typeof body.language !== 'string' || !SETTINGS_LANGUAGES.includes(body.language)) {
+        errors.push(`language must be one of: ${SETTINGS_LANGUAGES.join(', ')}.`);
+      }
+      continue;
+    }
+
+    const value = body[key];
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+      errors.push(`${key} must be an object.`);
+    }
+  }
+
+  if (errors.length > 0) {
+    res.status(400).json({ success: false, message: 'Validation failed', errors });
+    return;
+  }
+
+  next();
+}
+
 export function validateResetPassword(req: Request, res: Response, next: NextFunction) {
   const { resetToken, newPassword } = req.body ?? {};
   const errors: string[] = [];

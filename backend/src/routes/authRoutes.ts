@@ -6,6 +6,8 @@ import {
   updateMe,
   getMyEmergencyContact,
   updateMyEmergencyContact,
+  getMySettings,
+  updateMySettings,
   forgotPassword,
   resetPassword,
   changePassword,
@@ -15,6 +17,7 @@ import {
   validateLogin,
   validateUpdateMe,
   validateEmergencyContact,
+  validateSettingsUpdate,
   validateForgotPassword,
   validateResetPassword,
   validateChangePassword,
@@ -30,6 +33,8 @@ router.get('/me', authenticate, getMe);
 router.patch('/me', authenticate, validateUpdateMe, updateMe);
 router.get('/me/emergency-contact', authenticate, requireRole('mother'), getMyEmergencyContact);
 router.put('/me/emergency-contact', authenticate, requireRole('mother'), validateEmergencyContact, updateMyEmergencyContact);
+router.get('/me/settings', authenticate, getMySettings);
+router.patch('/me/settings', authenticate, validateSettingsUpdate, updateMySettings);
 router.post('/forgot-password', validateForgotPassword, forgotPassword);
 router.post('/reset-password', validateResetPassword, resetPassword);
 router.post('/change-password', authenticate, validateChangePassword, changePassword);

@@ -10,6 +10,7 @@ import {
   AuthError,
 } from '../services/authService';
 import { getPrimaryEmergencyContact, upsertPrimaryEmergencyContact } from '../services/emergencyContactService';
+import { getSettingsForRole, upsertSettingsForRole } from '../services/settingsService';
 import { logger } from '../utils/logger';
 
 export async function register(req: Request, res: Response) {
@@ -177,6 +178,44 @@ export async function updateMyEmergencyContact(req: Request, res: Response) {
     }
     logger.error('Update emergency contact failed', error);
     res.status(500).json({ success: false, message: 'Unable to update emergency contact.' });
+  }
+}
+
+export async function getMySettings(req: Request, res: Response) {
+  if (!req.user) {
+    res.status(401).json({ success: false, message: 'Authentication token is required.' });
+    return;
+  }
+
+  try {
+    const settings = await getSettingsForRole(req.user.id, req.user.role);
+    res.status(200).json({ success: true, settings });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      res.status(error.status).json({ success: false, message: error.message });
+      return;
+    }
+    logger.error('Fetch settings failed', error);
+    res.status(500).json({ success: false, message: 'Unable to fetch settings.' });
+  }
+}
+
+export async function updateMySettings(req: Request, res: Response) {
+  if (!req.user) {
+    res.status(401).json({ success: false, message: 'Authentication token is required.' });
+    return;
+  }
+
+  try {
+    const settings = await upsertSettingsForRole(req.user.id, req.user.role, req.body ?? {});
+    res.status(200).json({ success: true, settings });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      res.status(error.status).json({ success: false, message: error.message });
+      return;
+    }
+    logger.error('Update settings failed', error);
+    res.status(500).json({ success: false, message: 'Unable to update settings.' });
   }
 }
 
