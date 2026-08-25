@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import {
   registerUser,
   loginUser,
+  getCurrentUser,
   requestPasswordReset,
   resetPassword as resetPasswordService,
   changePassword as changePasswordService,
@@ -94,6 +95,25 @@ export async function resetPassword(req: Request, res: Response) {
     }
     logger.error('Reset password failed', error);
     res.status(500).json({ success: false, message: 'Unable to reset password.' });
+  }
+}
+
+export async function getMe(req: Request, res: Response) {
+  if (!req.user) {
+    res.status(401).json({ success: false, message: 'Authentication token is required.' });
+    return;
+  }
+
+  try {
+    const user = await getCurrentUser(req.user.id);
+    res.status(200).json({ success: true, user });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      res.status(error.status).json({ success: false, message: error.message });
+      return;
+    }
+    logger.error('Fetch current user failed', error);
+    res.status(500).json({ success: false, message: 'Unable to fetch current user.' });
   }
 }
 

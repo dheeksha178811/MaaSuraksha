@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { pool } from '../config/db';
 import { signToken } from '../utils/jwt';
-import { createProfileForRole } from './profileService';
+import { createProfileForRole, getProfileForRole } from './profileService';
 import { isPgError, PG_ERROR_CODES } from '../utils/dbErrors';
 
 const SALT_ROUNDS = 12;
@@ -141,6 +141,39 @@ export async function loginUser(email: string, password: string): Promise<{ user
   const token = signToken({ userId: user.id, role: user.role });
 
   return { user, token };
+}
+
+export interface CurrentUser extends AuthUser {
+  isActive: boolean;
+  profile: Record<string, unknown>;
+}
+
+/**
+ * Identity comes exclusively from the JWT-derived userId (req.user.id) —
+ * callers must never accept a userId from request input for this lookup.
+ */
+export async function getCurrentUser(userId: string): Promise<CurrentUser> {
+  const result = await pool.query<UserRow>(
+    `SELECT id, email, password_hash, phone, role, avatar_url, is_active, created_at
+     FROM users WHERE id = $1`,
+    [userId]
+  );
+
+  const row = result.rows[0];
+  if (!row) {
+    throw new AuthError('User not found.', 404);
+  }
+
+  const profile = await getProfileForRole(row.id, row.role);
+  if (!profile) {
+    throw new AuthError('Profile not found for this account.', 404);
+  }
+
+  return {
+    ...toAuthUser(row),
+    isActive: row.is_active,
+    profile,
+  };
 }
 
 export interface PasswordResetRequestResult {

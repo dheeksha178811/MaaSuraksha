@@ -1,4 +1,5 @@
 import { PoolClient } from 'pg';
+import { pool } from '../config/db';
 
 type ProfileInput = Record<string, unknown>;
 
@@ -109,4 +110,33 @@ export async function createProfileForRole(
     default:
       throw new Error(`Unsupported role: ${role}`);
   }
+}
+
+/**
+ * Read-side counterpart to createProfileForRole. The role is switched over
+ * (never interpolated into SQL) so the table name is always one of the four
+ * literals below, regardless of what a caller passes in.
+ */
+export async function getProfileForRole(
+  userId: string,
+  role: string
+): Promise<Record<string, unknown> | null> {
+  let result;
+  switch (role) {
+    case 'mother':
+      result = await pool.query('SELECT * FROM mother_profiles WHERE id = $1', [userId]);
+      break;
+    case 'doctor':
+      result = await pool.query('SELECT * FROM doctor_profiles WHERE id = $1', [userId]);
+      break;
+    case 'hospital':
+      result = await pool.query('SELECT * FROM hospital_profiles WHERE id = $1', [userId]);
+      break;
+    case 'admin':
+      result = await pool.query('SELECT * FROM admin_profiles WHERE id = $1', [userId]);
+      break;
+    default:
+      return null;
+  }
+  return result.rows[0] ?? null;
 }
