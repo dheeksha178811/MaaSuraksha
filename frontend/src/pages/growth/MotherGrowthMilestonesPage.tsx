@@ -8,15 +8,10 @@ import { Select } from '@/components/ui/Select';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { cn } from '@/utils/cn';
 import { mockChild, mockMother } from '@/data/mockData';
-import {
-  LogMeasurementInput,
-  MOTHER_TODAY_ISO,
-  createLoggedMeasurement,
-  getLatestMeasurement,
-  getMeasurementsForMother,
-  getMilestonesForMother,
-  getPreviousMeasurement,
-} from '@/data/motherGrowthMockData';
+import { LogMeasurementInput, getLatestMeasurement, getPreviousMeasurement } from '@/data/motherGrowthMockData';
+import * as motherService from '@/services/motherService';
+import { useAsyncData } from '@/hooks/useAsyncData';
+import { AsyncStateView } from '@/pages/hospital/components/AsyncStateView';
 import { GrowthMeasurement, GrowthRecipientType, MilestoneRecord } from '@/types';
 import { MeasurementCard } from './components/MeasurementCard';
 import { MeasurementDetailsModal } from './components/MeasurementDetailsModal';
@@ -39,10 +34,10 @@ const STATUS_PRIORITY: Record<MilestoneRecord['status'], number> = {
 };
 
 export const MotherGrowthMilestonesPage: React.FC = () => {
-  const [measurements, setMeasurements] = useState<GrowthMeasurement[]>(() =>
-    getMeasurementsForMother(mockMother.id)
-  );
-  const [milestones, setMilestones] = useState<MilestoneRecord[]>(() => getMilestonesForMother(mockMother.id));
+  const [measurementsState, reloadMeasurements] = useAsyncData(() => motherService.getGrowthMeasurements(), []);
+  const [milestonesState, reloadMilestones] = useAsyncData(() => motherService.getMilestones(), []);
+  const measurements: GrowthMeasurement[] = measurementsState.status === 'success' ? measurementsState.data : [];
+  const milestones: MilestoneRecord[] = milestonesState.status === 'success' ? milestonesState.data : [];
 
   const [mainTab, setMainTab] = useState<MainTabId>('growth');
   const [recipientFilter, setRecipientFilter] = useState<'ALL' | GrowthRecipientType>('ALL');
@@ -83,24 +78,15 @@ export const MotherGrowthMilestonesPage: React.FC = () => {
     [milestones, recipientFilter]
   );
 
-  const handleLogMeasurement = (input: LogMeasurementInput) => {
-    const newMeasurement = createLoggedMeasurement(input, measurements);
-    setMeasurements((prev) => [...prev, newMeasurement]);
+  const handleLogMeasurement = async (input: LogMeasurementInput) => {
+    await motherService.logGrowthMeasurement(input);
+    reloadMeasurements();
   };
 
-  const handleMarkAchieved = (milestone: MilestoneRecord) => {
-    setMilestones((prev) =>
-      prev.map((m) =>
-        m.milestoneId === milestone.milestoneId
-          ? { ...m, status: 'achieved' as const, achievedDate: MOTHER_TODAY_ISO }
-          : m
-      )
-    );
-    setViewingMilestone((prev) =>
-      prev && prev.milestoneId === milestone.milestoneId
-        ? { ...prev, status: 'achieved' as const, achievedDate: MOTHER_TODAY_ISO }
-        : prev
-    );
+  const handleMarkAchieved = async (milestone: MilestoneRecord) => {
+    await motherService.markMilestoneAchieved(milestone.milestoneId);
+    setViewingMilestone(null);
+    reloadMilestones();
   };
 
   return (
@@ -200,7 +186,16 @@ export const MotherGrowthMilestonesPage: React.FC = () => {
       </div>
 
       {/* Growth Tracking Tab */}
+      {mainTab === 'growth' && measurementsState.status !== 'success' && (
+        <AsyncStateView
+          status={measurementsState.status}
+          loadingLabel="Loading growth measurements…"
+          errorMessage={measurementsState.status === 'error' ? measurementsState.message : undefined}
+          onRetry={reloadMeasurements}
+        />
+      )}
       {mainTab === 'growth' &&
+        measurementsState.status === 'success' &&
         (measurementsDesc.length === 0 ? (
           <EmptyState
             icon={Scale}
@@ -230,7 +225,16 @@ export const MotherGrowthMilestonesPage: React.FC = () => {
         ))}
 
       {/* Milestones Tab */}
+      {mainTab === 'milestones' && milestonesState.status !== 'success' && (
+        <AsyncStateView
+          status={milestonesState.status}
+          loadingLabel="Loading milestones…"
+          errorMessage={milestonesState.status === 'error' ? milestonesState.message : undefined}
+          onRetry={reloadMilestones}
+        />
+      )}
       {mainTab === 'milestones' &&
+        milestonesState.status === 'success' &&
         (sortedMilestones.length === 0 ? (
           <EmptyState
             icon={Sparkles}

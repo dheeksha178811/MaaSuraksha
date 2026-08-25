@@ -8,16 +8,17 @@ import { Select } from '@/components/ui/Select';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Avatar } from '@/components/ui/Avatar';
 import { cn } from '@/utils/cn';
-import { mockDoctor, mockHospital, mockMother } from '@/data/mockData';
+import { mockDoctor, mockHospital } from '@/data/mockData';
 import {
   APPOINTMENT_CATEGORY_LABELS,
   MOTHER_TODAY_ISO,
   RequestAppointmentInput,
-  createRequestedAppointment,
-  getAppointmentsForMother,
   isCancellable,
   isReschedulable,
 } from '@/data/motherAppointmentsMockData';
+import * as motherService from '@/services/motherService';
+import { useAsyncData } from '@/hooks/useAsyncData';
+import { AsyncStateView } from '@/pages/hospital/components/AsyncStateView';
 import { AppointmentCategory, MotherAppointment } from '@/types';
 import { AppointmentCard } from './components/AppointmentCard';
 import { AppointmentDetailsModal } from './components/AppointmentDetailsModal';
@@ -36,9 +37,8 @@ const CATEGORY_FILTER_OPTIONS = [
 ];
 
 export const MotherAppointmentsPage: React.FC = () => {
-  const [appointments, setAppointments] = useState<MotherAppointment[]>(() =>
-    getAppointmentsForMother(mockMother.id)
-  );
+  const [appointmentsState, reloadAppointments] = useAsyncData(() => motherService.getAppointments(), []);
+  const appointments: MotherAppointment[] = appointmentsState.status === 'success' ? appointmentsState.data : [];
   const [activeTab, setActiveTab] = useState<TabId>('upcoming');
   const [categoryFilter, setCategoryFilter] = useState<'ALL' | AppointmentCategory>('ALL');
 
@@ -76,32 +76,24 @@ export const MotherAppointmentsPage: React.FC = () => {
     return source.filter((a) => a.category === categoryFilter);
   }, [activeTab, upcomingAppointments, pastAppointments, categoryFilter]);
 
-  const handleRequestAppointment = (input: RequestAppointmentInput) => {
-    const newAppointment = createRequestedAppointment(input, appointments);
-    setAppointments((prev) => [...prev, newAppointment]);
+  const handleRequestAppointment = async (input: RequestAppointmentInput) => {
+    await motherService.requestAppointment(input);
     setActiveTab('upcoming');
+    reloadAppointments();
   };
 
-  const handleConfirmReschedule = (appointment: MotherAppointment, newDate: string, newTime: string) => {
-    setAppointments((prev) =>
-      prev.map((a) =>
-        a.appointmentId === appointment.appointmentId
-          ? { ...a, date: newDate, time: newTime, status: 'rescheduled' as const }
-          : a
-      )
-    );
+  const handleConfirmReschedule = async (appointment: MotherAppointment, newDate: string, newTime: string) => {
+    await motherService.rescheduleAppointment(appointment.appointmentId, newDate, newTime);
     setReschedulingAppointment(null);
     setViewingAppointment(null);
+    reloadAppointments();
   };
 
-  const handleConfirmCancel = (appointment: MotherAppointment) => {
-    setAppointments((prev) =>
-      prev.map((a) =>
-        a.appointmentId === appointment.appointmentId ? { ...a, status: 'cancelled' as const } : a
-      )
-    );
+  const handleConfirmCancel = async (appointment: MotherAppointment) => {
+    await motherService.cancelAppointment(appointment.appointmentId);
     setCancellingAppointment(null);
     setViewingAppointment(null);
+    reloadAppointments();
   };
 
   return (
@@ -171,7 +163,14 @@ export const MotherAppointmentsPage: React.FC = () => {
       </div>
 
       {/* Appointment List */}
-      {visibleAppointments.length === 0 ? (
+      {appointmentsState.status !== 'success' ? (
+        <AsyncStateView
+          status={appointmentsState.status}
+          loadingLabel="Loading appointments…"
+          errorMessage={appointmentsState.status === 'error' ? appointmentsState.message : undefined}
+          onRetry={reloadAppointments}
+        />
+      ) : visibleAppointments.length === 0 ? (
         <EmptyState
           icon={activeTab === 'upcoming' ? CalendarPlus : CalendarX2}
           title={activeTab === 'upcoming' ? 'No upcoming appointments' : 'No past appointments'}

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { UserRole, BaseUser } from '@/types';
 import { mockMother, mockDoctor, mockHospital } from '@/data/mockData';
-import { loginWithBackend, fetchCurrentUser, AuthApiError, RealAuthUser } from '@/services/authApi';
+import { loginWithBackend, fetchCurrentUser, AuthApiError, RealAuthUser, TOKEN_STORAGE_KEY } from '@/services/authApi';
 
 const MOCK_USERS_BY_ROLE: Record<UserRole, BaseUser> = {
   mother: mockMother,
@@ -17,7 +17,6 @@ const MOCK_USERS_BY_ROLE: Record<UserRole, BaseUser> = {
 };
 
 const ROLE_STORAGE_KEY = 'maasuraksha_mock_role';
-const TOKEN_STORAGE_KEY = 'maasuraksha_auth_token';
 
 // Merges the real backend identity fields onto the existing per-role mock
 // object, so every other field that non-identity pages/components still

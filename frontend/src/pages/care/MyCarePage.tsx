@@ -8,13 +8,14 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { cn } from '@/utils/cn';
 import { mockMother } from '@/data/mockData';
 import {
-  getDailyGoalsForMother,
   getExerciseGuidanceForMother,
   getFoodGuidanceForMother,
   getNutritionPlanForMother,
-  getRemindersForMother,
 } from '@/data/motherNutritionMockData';
 import { getHealthTimelineForMother } from '@/data/healthTimelineMockData';
+import * as motherService from '@/services/motherService';
+import { useAsyncData } from '@/hooks/useAsyncData';
+import { AsyncStateView } from '@/pages/hospital/components/AsyncStateView';
 import { DailyGoalItem, FoodGuidanceType, NutritionReminder, TimelineEventCategory } from '@/types';
 import { FoodGuidanceCard } from './components/FoodGuidanceCard';
 import { ExerciseGuidanceCard } from './components/ExerciseGuidanceCard';
@@ -52,8 +53,10 @@ export const MyCarePage: React.FC = () => {
     [timelineEvents, timelineFilter]
   );
 
-  const [dailyGoals, setDailyGoals] = useState<DailyGoalItem[]>(() => getDailyGoalsForMother(mockMother.id));
-  const [reminders, setReminders] = useState<NutritionReminder[]>(() => getRemindersForMother(mockMother.id));
+  const [goalsState, reloadGoals] = useAsyncData(() => motherService.getDailyGoals(), []);
+  const [remindersState, reloadReminders] = useAsyncData(() => motherService.getNutritionReminders(), []);
+  const dailyGoals: DailyGoalItem[] = goalsState.status === 'success' ? goalsState.data : [];
+  const reminders: NutritionReminder[] = remindersState.status === 'success' ? remindersState.data : [];
 
   const plan = useMemo(() => getNutritionPlanForMother(mockMother.id), []);
   const foods = useMemo(() => getFoodGuidanceForMother(mockMother.id), []);
@@ -66,24 +69,19 @@ export const MyCarePage: React.FC = () => {
 
   const goalsCompletedCount = dailyGoals.filter((g) => g.completedCount >= g.targetCount).length;
 
-  const handleIncrementGoal = (goal: DailyGoalItem) => {
-    setDailyGoals((prev) =>
-      prev.map((g) =>
-        g.goalId === goal.goalId ? { ...g, completedCount: Math.min(g.targetCount, g.completedCount + 1) } : g
-      )
-    );
+  const handleIncrementGoal = async (goal: DailyGoalItem) => {
+    await motherService.incrementDailyGoal(goal.goalId);
+    reloadGoals();
   };
 
-  const handleDecrementGoal = (goal: DailyGoalItem) => {
-    setDailyGoals((prev) =>
-      prev.map((g) => (g.goalId === goal.goalId ? { ...g, completedCount: Math.max(0, g.completedCount - 1) } : g))
-    );
+  const handleDecrementGoal = async (goal: DailyGoalItem) => {
+    await motherService.decrementDailyGoal(goal.goalId);
+    reloadGoals();
   };
 
-  const handleToggleReminder = (reminder: NutritionReminder) => {
-    setReminders((prev) =>
-      prev.map((r) => (r.reminderId === reminder.reminderId ? { ...r, enabled: !r.enabled } : r))
-    );
+  const handleToggleReminder = async (reminder: NutritionReminder) => {
+    await motherService.toggleNutritionReminder(reminder.reminderId);
+    reloadReminders();
   };
 
   return (
@@ -196,16 +194,25 @@ export const MyCarePage: React.FC = () => {
                 {goalsCompletedCount} of {dailyGoals.length} Met
               </Badge>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {dailyGoals.map((goal) => (
-                <DailyGoalCard
-                  key={goal.goalId}
-                  goal={goal}
-                  onIncrement={handleIncrementGoal}
-                  onDecrement={handleDecrementGoal}
-                />
-              ))}
-            </div>
+            {goalsState.status !== 'success' ? (
+              <AsyncStateView
+                status={goalsState.status}
+                loadingLabel="Loading today's goals…"
+                errorMessage={goalsState.status === 'error' ? goalsState.message : undefined}
+                onRetry={reloadGoals}
+              />
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {dailyGoals.map((goal) => (
+                  <DailyGoalCard
+                    key={goal.goalId}
+                    goal={goal}
+                    onIncrement={handleIncrementGoal}
+                    onDecrement={handleDecrementGoal}
+                  />
+                ))}
+              </div>
+            )}
           </Card>
 
           {/* Reminders */}
@@ -214,11 +221,20 @@ export const MyCarePage: React.FC = () => {
               <Droplets className="w-5 h-5 text-sandal-600" />
               <h3 className="font-display text-xl font-bold text-warm-brown">Reminders</h3>
             </div>
-            <div className="space-y-3">
-              {reminders.map((reminder) => (
-                <ReminderRow key={reminder.reminderId} reminder={reminder} onToggle={handleToggleReminder} />
-              ))}
-            </div>
+            {remindersState.status !== 'success' ? (
+              <AsyncStateView
+                status={remindersState.status}
+                loadingLabel="Loading reminders…"
+                errorMessage={remindersState.status === 'error' ? remindersState.message : undefined}
+                onRetry={reloadReminders}
+              />
+            ) : (
+              <div className="space-y-3">
+                {reminders.map((reminder) => (
+                  <ReminderRow key={reminder.reminderId} reminder={reminder} onToggle={handleToggleReminder} />
+                ))}
+              </div>
+            )}
           </Card>
 
           {/* Nutrition Guidance / Exercise Guidance Sub-Tabs */}

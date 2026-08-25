@@ -15,6 +15,10 @@ interface EditProfileModalProps {
   initialValues: ProfileFormValues;
   onClose: () => void;
   onSave: (values: ProfileFormValues) => void;
+  // False when the account is backed by the real MaaSuraksha server, which
+  // has no write path for a display name change (see authService.ts —
+  // updateCurrentUser only ever touches phone/email/profile columns).
+  nameEditable?: boolean;
 }
 
 export const EditProfileModal: React.FC<EditProfileModalProps> = ({
@@ -22,6 +26,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   initialValues,
   onClose,
   onSave,
+  nameEditable = true,
 }) => {
   const [values, setValues] = useState<ProfileFormValues>(initialValues);
 
@@ -49,6 +54,8 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
           value={values.name}
           onChange={(e) => setValues((v) => ({ ...v, name: e.target.value }))}
           error={values.name.trim() === '' ? 'Name is required.' : undefined}
+          disabled={!nameEditable}
+          helperText={nameEditable ? undefined : "Your account name can't be changed here yet."}
         />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input

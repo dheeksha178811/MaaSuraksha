@@ -6,8 +6,10 @@ import { Badge } from '@/components/ui/Badge';
 import { Select } from '@/components/ui/Select';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { cn } from '@/utils/cn';
-import { mockDoctor, mockHospital, mockMother } from '@/data/mockData';
-import { getVaccinationsForMother } from '@/data/motherVaccinationsMockData';
+import { mockDoctor, mockHospital } from '@/data/mockData';
+import * as motherService from '@/services/motherService';
+import { useAsyncData } from '@/hooks/useAsyncData';
+import { AsyncStateView } from '@/pages/hospital/components/AsyncStateView';
 import { MotherVaccinationRecord, VaccineRecipientType } from '@/types';
 import { VaccinationCard } from './components/VaccinationCard';
 import { VaccinationDetailsModal } from './components/VaccinationDetailsModal';
@@ -21,9 +23,8 @@ const RECIPIENT_FILTER_OPTIONS: { value: 'ALL' | VaccineRecipientType; label: st
 ];
 
 export const MotherVaccinationsPage: React.FC = () => {
-  const [vaccinations, setVaccinations] = useState<MotherVaccinationRecord[]>(() =>
-    getVaccinationsForMother(mockMother.id)
-  );
+  const [vaccinationsState, reloadVaccinations] = useAsyncData(() => motherService.getVaccinations(), []);
+  const vaccinations: MotherVaccinationRecord[] = vaccinationsState.status === 'success' ? vaccinationsState.data : [];
   const [activeTab, setActiveTab] = useState<TabId>('due');
   const [recipientFilter, setRecipientFilter] = useState<'ALL' | VaccineRecipientType>('ALL');
   const [viewingVaccination, setViewingVaccination] = useState<MotherVaccinationRecord | null>(null);
@@ -44,17 +45,10 @@ export const MotherVaccinationsPage: React.FC = () => {
     [source, recipientFilter]
   );
 
-  const handleToggleReminder = (vaccination: MotherVaccinationRecord) => {
-    setVaccinations((prev) =>
-      prev.map((v) =>
-        v.vaccinationId === vaccination.vaccinationId ? { ...v, reminderEnabled: !v.reminderEnabled } : v
-      )
-    );
-    setViewingVaccination((prev) =>
-      prev && prev.vaccinationId === vaccination.vaccinationId
-        ? { ...prev, reminderEnabled: !prev.reminderEnabled }
-        : prev
-    );
+  const handleToggleReminder = async (vaccination: MotherVaccinationRecord) => {
+    await motherService.toggleVaccinationReminder(vaccination.vaccinationId);
+    setViewingVaccination(null);
+    reloadVaccinations();
   };
 
   return (
@@ -126,7 +120,14 @@ export const MotherVaccinationsPage: React.FC = () => {
       </div>
 
       {/* Vaccination List */}
-      {visibleVaccinations.length === 0 ? (
+      {vaccinationsState.status !== 'success' ? (
+        <AsyncStateView
+          status={vaccinationsState.status}
+          loadingLabel="Loading vaccinations…"
+          errorMessage={vaccinationsState.status === 'error' ? vaccinationsState.message : undefined}
+          onRetry={reloadVaccinations}
+        />
+      ) : visibleVaccinations.length === 0 ? (
         <EmptyState
           icon={activeTab === 'due' ? Syringe : ShieldCheck}
           title={activeTab === 'due' ? 'No due or upcoming vaccinations' : 'No completed vaccinations'}

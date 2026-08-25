@@ -9,7 +9,12 @@
 // rosters, ...) stays exactly as-is, per this part's explicit scope.
 // ---------------------------------------------------------------------------
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+
+// Shared with useMockAuth.ts (where the token is written on login) and
+// motherService.ts (where it's read to authenticate mother-domain requests),
+// so every consumer of the persisted JWT agrees on one storage key.
+export const TOKEN_STORAGE_KEY = 'maasuraksha_auth_token';
 
 export type RealUserRole = 'mother' | 'doctor' | 'hospital' | 'admin';
 

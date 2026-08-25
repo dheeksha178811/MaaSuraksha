@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   AlarmClock,
   AlertTriangle,
@@ -22,7 +22,10 @@ import { Select } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
 import { Toast } from '@/components/ui/Toast';
 import { mockMother } from '@/data/mockData';
-import { getSettingsForMother, LANGUAGE_OPTIONS } from '@/data/motherSettingsMockData';
+import { LANGUAGE_OPTIONS, defaultMotherSettings } from '@/data/motherSettingsMockData';
+import * as motherService from '@/services/motherService';
+import { useAsyncData } from '@/hooks/useAsyncData';
+import { AsyncStateView } from '@/pages/hospital/components/AsyncStateView';
 import {
   EmergencyContact,
   NotificationPreferences,
@@ -41,22 +44,41 @@ const MOCK_SESSIONS = [
   { id: 'session_02', label: 'MaaSuraksha App', detail: 'iPhone 14 • Last active 2 days ago', icon: Smartphone },
 ];
 
-type ToastState = { type: 'success' | 'info'; title: string; message?: string } | null;
+type ToastState = { type: 'success' | 'info' | 'error'; title: string; message?: string } | null;
 
 export const MotherSettingsPage: React.FC = () => {
-  const seedSettings = getSettingsForMother(mockMother.id);
+  const [profileState, reloadProfile] = useAsyncData(() => motherService.getMyProfile(), []);
+  const [settingsState] = useAsyncData(() => motherService.getSettings(), []);
+  const [contactState, reloadContact] = useAsyncData(() => motherService.getEmergencyContact(), []);
 
-  const [profile, setProfile] = useState<ProfileFormValues>({
-    name: mockMother.name,
-    phone: mockMother.phone || '',
-    email: mockMother.email,
-    location: mockMother.location,
-  });
-  const [emergencyContact, setEmergencyContact] = useState<EmergencyContact>({ ...mockMother.emergencyContact });
-  const [notifications, setNotifications] = useState<NotificationPreferences>(seedSettings.notifications);
-  const [reminders, setReminders] = useState<ReminderPreferences>(seedSettings.reminders);
-  const [privacy, setPrivacy] = useState<PrivacyPreferences>(seedSettings.privacy);
-  const [language, setLanguage] = useState<SettingsLanguage>(seedSettings.language);
+  const [profile, setProfile] = useState<ProfileFormValues>({ name: '', phone: '', email: '', location: '' });
+  const [emergencyContact, setEmergencyContact] = useState<EmergencyContact>({ name: '', relation: '', phone: '' });
+  // Seeded with this app's existing default preference set (not another
+  // user's identity, unlike profile/emergencyContact above) so the panel
+  // never has to show blank toggles while the real settings are loading —
+  // overwritten in-place by the effect below once the real row arrives.
+  const [notifications, setNotifications] = useState<NotificationPreferences>(defaultMotherSettings.notifications);
+  const [reminders, setReminders] = useState<ReminderPreferences>(defaultMotherSettings.reminders);
+  const [privacy, setPrivacy] = useState<PrivacyPreferences>(defaultMotherSettings.privacy);
+  const [language, setLanguage] = useState<SettingsLanguage>(defaultMotherSettings.language);
+
+  // Seed local editable state once from each fetch, so a toggle can update
+  // it optimistically afterward without every keystroke re-deriving from
+  // (and racing) the async fetch state.
+  useEffect(() => {
+    if (profileState.status === 'success') setProfile(profileState.data);
+  }, [profileState]);
+  useEffect(() => {
+    if (contactState.status === 'success' && contactState.data) setEmergencyContact(contactState.data);
+  }, [contactState]);
+  useEffect(() => {
+    if (settingsState.status === 'success') {
+      setNotifications(settingsState.data.notifications);
+      setReminders(settingsState.data.reminders);
+      setPrivacy(settingsState.data.privacy);
+      setLanguage(settingsState.data.language);
+    }
+  }, [settingsState]);
 
   const [isEditProfileOpen, setEditProfileOpen] = useState(false);
   const [isEditEmergencyOpen, setEditEmergencyOpen] = useState(false);
@@ -71,42 +93,91 @@ export const MotherSettingsPage: React.FC = () => {
     window.setTimeout(() => setToast(null), 3000);
   };
 
-  const handleSaveProfile = (values: ProfileFormValues) => {
-    setProfile(values);
-    setEditProfileOpen(false);
-    showToast({ type: 'success', title: 'Profile updated successfully.' });
+  const persistSettings = async (patch: motherService.SettingsPatch, revert: () => void) => {
+    try {
+      await motherService.updateSettings(patch);
+    } catch (error) {
+      revert();
+      showToast({
+        type: 'error',
+        title: 'Could not save your change.',
+        message: error instanceof Error ? error.message : undefined,
+      });
+    }
   };
 
-  const handleSaveEmergencyContact = (values: EmergencyContact) => {
+  const handleSaveProfile = async (values: ProfileFormValues) => {
+    const previous = profile;
+    setProfile(values);
+    setEditProfileOpen(false);
+    try {
+      await motherService.updateProfile({ phone: values.phone, email: values.email, location: values.location });
+      showToast({ type: 'success', title: 'Profile updated successfully.' });
+    } catch (error) {
+      setProfile(previous);
+      showToast({
+        type: 'error',
+        title: 'Could not update profile.',
+        message: error instanceof Error ? error.message : undefined,
+      });
+    }
+  };
+
+  const handleSaveEmergencyContact = async (values: EmergencyContact) => {
+    const previous = emergencyContact;
     setEmergencyContact(values);
     setEditEmergencyOpen(false);
-    showToast({ type: 'success', title: 'Emergency contact updated.' });
+    try {
+      await motherService.updateEmergencyContact(values);
+      showToast({ type: 'success', title: 'Emergency contact updated.' });
+    } catch (error) {
+      setEmergencyContact(previous);
+      showToast({
+        type: 'error',
+        title: 'Could not update emergency contact.',
+        message: error instanceof Error ? error.message : undefined,
+      });
+    }
   };
 
   const handleNotificationChange = (key: keyof NotificationPreferences) => (checked: boolean) => {
-    setNotifications((prev) => ({ ...prev, [key]: checked }));
+    const previous = notifications;
+    const next = { ...notifications, [key]: checked };
+    setNotifications(next);
     showToast({ type: 'success', title: 'Notification preferences saved.' });
+    persistSettings({ notifications: next }, () => setNotifications(previous));
   };
 
   const handleReminderToggleChange = (key: Exclude<keyof ReminderPreferences, 'defaultReminderTime'>) => (checked: boolean) => {
-    setReminders((prev) => ({ ...prev, [key]: checked }));
+    const previous = reminders;
+    const next = { ...reminders, [key]: checked };
+    setReminders(next);
     showToast({ type: 'success', title: 'Reminder preferences updated.' });
+    persistSettings({ reminders: next }, () => setReminders(previous));
   };
 
   const handleReminderTimeChange = (value: string) => {
-    setReminders((prev) => ({ ...prev, defaultReminderTime: value }));
+    const previous = reminders;
+    const next = { ...reminders, defaultReminderTime: value };
+    setReminders(next);
     showToast({ type: 'success', title: 'Reminder preferences updated.' });
+    persistSettings({ reminders: next }, () => setReminders(previous));
   };
 
   const handlePrivacyChange = (key: keyof PrivacyPreferences) => (checked: boolean) => {
-    setPrivacy((prev) => ({ ...prev, [key]: checked }));
+    const previous = privacy;
+    const next = { ...privacy, [key]: checked };
+    setPrivacy(next);
     showToast({ type: 'success', title: 'Privacy preferences updated.' });
+    persistSettings({ privacy: next }, () => setPrivacy(previous));
   };
 
   const handleLanguageChange = (value: SettingsLanguage) => {
+    const previous = language;
     setLanguage(value);
     const label = LANGUAGE_OPTIONS.find((o) => o.value === value)?.label;
     showToast({ type: 'success', title: 'Language preference updated.', message: label ? `App language set to ${label}.` : undefined });
+    persistSettings({ language: value }, () => setLanguage(previous));
   };
 
   const handlePasswordChanged = () => {
@@ -143,45 +214,56 @@ export const MotherSettingsPage: React.FC = () => {
             <UserCircle className="w-5 h-5 text-sandal-600" />
             <h3 className="font-display text-xl font-bold text-warm-brown">Profile & Account</h3>
           </div>
-          <Button variant="outline" size="sm" onClick={() => setEditProfileOpen(true)}>Edit Profile</Button>
+          <Button variant="outline" size="sm" onClick={() => setEditProfileOpen(true)} disabled={profileState.status !== 'success'}>
+            Edit Profile
+          </Button>
         </div>
-        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-          <div className="flex items-start gap-2">
-            <UserCircle className="w-4 h-4 text-sandal-600 shrink-0 mt-0.5" />
-            <div>
-              <dt className="text-xs text-warm-muted">Name</dt>
-              <dd className="font-medium text-warm-brown">{profile.name}</dd>
+        {profileState.status !== 'success' ? (
+          <AsyncStateView
+            status={profileState.status}
+            loadingLabel="Loading your profile…"
+            errorMessage={profileState.status === 'error' ? profileState.message : undefined}
+            onRetry={reloadProfile}
+          />
+        ) : (
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+            <div className="flex items-start gap-2">
+              <UserCircle className="w-4 h-4 text-sandal-600 shrink-0 mt-0.5" />
+              <div>
+                <dt className="text-xs text-warm-muted">Name</dt>
+                <dd className="font-medium text-warm-brown">{profile.name}</dd>
+              </div>
             </div>
-          </div>
-          <div className="flex items-start gap-2">
-            <ShieldCheck className="w-4 h-4 text-sandal-600 shrink-0 mt-0.5" />
-            <div>
-              <dt className="text-xs text-warm-muted">Role</dt>
-              <dd className="font-medium text-warm-brown capitalize">{mockMother.role} / Beneficiary</dd>
+            <div className="flex items-start gap-2">
+              <ShieldCheck className="w-4 h-4 text-sandal-600 shrink-0 mt-0.5" />
+              <div>
+                <dt className="text-xs text-warm-muted">Role</dt>
+                <dd className="font-medium text-warm-brown capitalize">{mockMother.role} / Beneficiary</dd>
+              </div>
             </div>
-          </div>
-          <div className="flex items-start gap-2">
-            <Phone className="w-4 h-4 text-sandal-600 shrink-0 mt-0.5" />
-            <div>
-              <dt className="text-xs text-warm-muted">Phone Number</dt>
-              <dd className="font-medium text-warm-brown">{profile.phone || '—'}</dd>
+            <div className="flex items-start gap-2">
+              <Phone className="w-4 h-4 text-sandal-600 shrink-0 mt-0.5" />
+              <div>
+                <dt className="text-xs text-warm-muted">Phone Number</dt>
+                <dd className="font-medium text-warm-brown">{profile.phone || '—'}</dd>
+              </div>
             </div>
-          </div>
-          <div className="flex items-start gap-2">
-            <Mail className="w-4 h-4 text-sandal-600 shrink-0 mt-0.5" />
-            <div>
-              <dt className="text-xs text-warm-muted">Email</dt>
-              <dd className="font-medium text-warm-brown">{profile.email}</dd>
+            <div className="flex items-start gap-2">
+              <Mail className="w-4 h-4 text-sandal-600 shrink-0 mt-0.5" />
+              <div>
+                <dt className="text-xs text-warm-muted">Email</dt>
+                <dd className="font-medium text-warm-brown">{profile.email}</dd>
+              </div>
             </div>
-          </div>
-          <div className="flex items-start gap-2 sm:col-span-2">
-            <MapPin className="w-4 h-4 text-sandal-600 shrink-0 mt-0.5" />
-            <div>
-              <dt className="text-xs text-warm-muted">Location</dt>
-              <dd className="font-medium text-warm-brown">{profile.location}</dd>
+            <div className="flex items-start gap-2 sm:col-span-2">
+              <MapPin className="w-4 h-4 text-sandal-600 shrink-0 mt-0.5" />
+              <div>
+                <dt className="text-xs text-warm-muted">Location</dt>
+                <dd className="font-medium text-warm-brown">{profile.location || '—'}</dd>
+              </div>
             </div>
-          </div>
-        </dl>
+          </dl>
+        )}
       </Card>
 
       {/* Notification Preferences */}
@@ -315,22 +397,35 @@ export const MotherSettingsPage: React.FC = () => {
             <HeartPulse className="w-5 h-5 text-sandal-600" />
             <h3 className="font-display text-xl font-bold text-warm-brown">Emergency Contact</h3>
           </div>
-          <Button variant="outline" size="sm" onClick={() => setEditEmergencyOpen(true)}>Edit Contact</Button>
+          <Button variant="outline" size="sm" onClick={() => setEditEmergencyOpen(true)} disabled={contactState.status !== 'success'}>
+            Edit Contact
+          </Button>
         </div>
-        <dl className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-          <div>
-            <dt className="text-xs text-warm-muted">Contact Name</dt>
-            <dd className="font-medium text-warm-brown">{emergencyContact.name}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-warm-muted">Relationship</dt>
-            <dd className="font-medium text-warm-brown">{emergencyContact.relation}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-warm-muted">Phone Number</dt>
-            <dd className="font-medium text-warm-brown">{emergencyContact.phone}</dd>
-          </div>
-        </dl>
+        {contactState.status !== 'success' ? (
+          <AsyncStateView
+            status={contactState.status}
+            loadingLabel="Loading emergency contact…"
+            errorMessage={contactState.status === 'error' ? contactState.message : undefined}
+            onRetry={reloadContact}
+          />
+        ) : !emergencyContact.name ? (
+          <p className="text-sm text-warm-muted">No emergency contact on file yet. Add one so your care team can reach someone if needed.</p>
+        ) : (
+          <dl className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+            <div>
+              <dt className="text-xs text-warm-muted">Contact Name</dt>
+              <dd className="font-medium text-warm-brown">{emergencyContact.name}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-warm-muted">Relationship</dt>
+              <dd className="font-medium text-warm-brown">{emergencyContact.relation || '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-warm-muted">Phone Number</dt>
+              <dd className="font-medium text-warm-brown">{emergencyContact.phone}</dd>
+            </div>
+          </dl>
+        )}
       </Card>
 
       {/* Security */}
@@ -409,6 +504,7 @@ export const MotherSettingsPage: React.FC = () => {
         initialValues={profile}
         onClose={() => setEditProfileOpen(false)}
         onSave={handleSaveProfile}
+        nameEditable={false}
       />
 
       <EditEmergencyContactModal

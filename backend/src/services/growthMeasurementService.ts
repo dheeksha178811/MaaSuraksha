@@ -17,6 +17,8 @@ export interface GrowthMeasurementRow {
   child_id: string | null;
   doctor_id: string | null;
   hospital_id: string | null;
+  doctor_name: string | null;
+  hospital_name: string | null;
   recipient_type: string;
   measured_on: string;
   weight_kg: string | null;
@@ -30,6 +32,14 @@ export interface GrowthMeasurementRow {
 
 const COLUMNS = `id, mother_id, child_id, doctor_id, hospital_id, recipient_type, measured_on,
   weight_kg, height_cm, head_circumference_cm, context, notes, logged_by_mother, created_at`;
+
+// doctor_id/hospital_id are bare FKs — the mother frontend's MeasurementCard
+// needs a display name, not an id, so reads resolve both via a correlated
+// subquery rather than the frontend inventing one. Always null for a
+// mother-logged home measurement (doctor_id/hospital_id are never set there),
+// which is correct: there is no clinician to attribute it to.
+const NAME_EXPRS = `(SELECT name FROM users WHERE id = growth_measurements.doctor_id) AS doctor_name,
+  (SELECT facility_name FROM hospital_profiles WHERE id = growth_measurements.hospital_id) AS hospital_name`;
 
 /**
  * growth_measurements.mother_id has a FK to mother_profiles(id), so an
@@ -55,7 +65,7 @@ export async function listMyGrowthMeasurements(motherId: string): Promise<Growth
   await assertMotherProfileExists(motherId);
 
   const result = await pool.query<GrowthMeasurementRow>(
-    `SELECT ${COLUMNS}
+    `SELECT ${COLUMNS}, ${NAME_EXPRS}
      FROM growth_measurements
      WHERE mother_id = $1
      ORDER BY measured_on ASC, created_at ASC`,
@@ -86,7 +96,7 @@ export async function logMyGrowthMeasurement(
     `INSERT INTO growth_measurements
        (mother_id, child_id, recipient_type, measured_on, weight_kg, height_cm, head_circumference_cm, notes, logged_by_mother)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true)
-     RETURNING ${COLUMNS}`,
+     RETURNING ${COLUMNS}, ${NAME_EXPRS}`,
     [
       motherId,
       input.recipientType === 'CHILD' ? input.childId : null,

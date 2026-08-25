@@ -7,6 +7,8 @@ export interface AppointmentRow {
   child_id: string | null;
   doctor_id: string;
   hospital_id: string;
+  doctor_name: string | null;
+  hospital_name: string | null;
   category: string | null;
   title: string | null;
   appt_date: string | null;
@@ -28,6 +30,13 @@ export interface RequestAppointmentInput {
 
 const COLUMNS = `id, mother_id, child_id, doctor_id, hospital_id, category, title, appt_date,
   appt_time, location, reason, status, notes, created_at, updated_at`;
+
+// doctor_id/hospital_id are bare FKs — AppointmentCard.tsx renders
+// doctorName/hospitalName directly (not the id), so every client-facing read
+// resolves both via a correlated subquery rather than the frontend inventing
+// display names.
+const NAME_EXPRS = `(SELECT name FROM users WHERE id = appointments.doctor_id) AS doctor_name,
+  (SELECT facility_name FROM hospital_profiles WHERE id = appointments.hospital_id) AS hospital_name`;
 
 /**
  * Ported verbatim from motherAppointmentsMockData.ts's APPOINTMENT_CATEGORY_LABELS
@@ -60,7 +69,7 @@ export async function listMyAppointments(motherId: string): Promise<AppointmentR
   await assertMotherProfileExists(motherId);
 
   const result = await pool.query<AppointmentRow>(
-    `SELECT ${COLUMNS}
+    `SELECT ${COLUMNS}, ${NAME_EXPRS}
      FROM appointments
      WHERE mother_id = $1
      ORDER BY appt_date ASC, appt_time ASC`,
@@ -106,7 +115,7 @@ export async function requestMyAppointment(motherId: string, input: RequestAppoi
   const result = await pool.query<AppointmentRow>(
     `INSERT INTO appointments (mother_id, doctor_id, hospital_id, category, title, appt_date, appt_time, location, reason, status)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'requested')
-     RETURNING ${COLUMNS}`,
+     RETURNING ${COLUMNS}, ${NAME_EXPRS}`,
     [motherId, assignment.doctor_id, assignment.hospital_id, input.category, title, input.apptDate, input.apptTime, location, input.reason]
   );
   return result.rows[0];
@@ -148,7 +157,7 @@ export async function cancelMyAppointment(motherId: string, appointmentId: strin
     `UPDATE appointments
      SET status = 'cancelled', updated_at = now()
      WHERE id = $1 AND mother_id = $2
-     RETURNING ${COLUMNS}`,
+     RETURNING ${COLUMNS}, ${NAME_EXPRS}`,
     [appointmentId, motherId]
   );
   return result.rows[0];
@@ -176,7 +185,7 @@ export async function rescheduleMyAppointment(
     `UPDATE appointments
      SET appt_date = $3, appt_time = $4, status = 'rescheduled', updated_at = now()
      WHERE id = $1 AND mother_id = $2
-     RETURNING ${COLUMNS}`,
+     RETURNING ${COLUMNS}, ${NAME_EXPRS}`,
     [appointmentId, motherId, newDate, newTime]
   );
   return result.rows[0];

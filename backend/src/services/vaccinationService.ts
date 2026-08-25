@@ -9,6 +9,7 @@ export interface VaccinationRow {
   hospital_id: string | null;
   recipient_type: string | null;
   vaccine_code: string | null;
+  vaccine_name: string | null;
   dose_label: string | null;
   recommended_date: string | null;
   given_date: string | null;
@@ -23,6 +24,13 @@ export interface VaccinationRow {
 const COLUMNS = `id, mother_id, child_id, doctor_id, hospital_id, recipient_type, vaccine_code,
   dose_label, recommended_date, given_date, status, location, administered_by, notes,
   reminder_enabled, created_at`;
+
+// vaccine_code is an internal catalog key, not a display name — the mother
+// frontend's VaccinationCard renders a human vaccine name as its own record
+// heading, so every read resolves it from vaccine_catalog via a correlated
+// subquery (kept out of COLUMNS since that constant is also reused for the
+// bare pre-update lookups in toggleMyVaccinationReminder, which don't need it).
+const VACCINE_NAME_EXPR = `(SELECT name FROM vaccine_catalog WHERE code = vaccinations.vaccine_code) AS vaccine_name`;
 
 /**
  * vaccinations.mother_id has a FK to mother_profiles(id), so an orphan user
@@ -41,7 +49,7 @@ export async function listMyVaccinations(motherId: string): Promise<VaccinationR
   await assertMotherProfileExists(motherId);
 
   const result = await pool.query<VaccinationRow>(
-    `SELECT ${COLUMNS}
+    `SELECT ${COLUMNS}, ${VACCINE_NAME_EXPR}
      FROM vaccinations
      WHERE mother_id = $1
      ORDER BY recommended_date ASC, created_at ASC`,
@@ -76,7 +84,7 @@ export async function toggleMyVaccinationReminder(motherId: string, vaccinationI
     `UPDATE vaccinations
      SET reminder_enabled = NOT reminder_enabled
      WHERE id = $1 AND mother_id = $2
-     RETURNING ${COLUMNS}`,
+     RETURNING ${COLUMNS}, ${VACCINE_NAME_EXPR}`,
     [vaccinationId, motherId]
   );
   return result.rows[0];
