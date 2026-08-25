@@ -102,3 +102,48 @@ export async function getPatientByIdForDoctor(
   );
   return result.rows[0] ?? null;
 }
+
+export interface DoctorAppointmentRow {
+  appointment_id: string;
+  patient_id: string | null;
+  patient_name: string;
+  doctor_id: string;
+  hospital_id: string;
+  category: string | null;
+  title: string | null;
+  appt_date: string | null;
+  appt_time: string | null;
+  location: string | null;
+  notes: string | null;
+  status: string | null;
+}
+
+/**
+ * A doctor's own appointments (the `appointments` table — migration 002 —
+ * already populated by Mother's real appointment APIs; see
+ * backend/src/services/appointmentService.ts). `appointments` has no direct
+ * FK to patient_care_records, so `patient_id` (the roster id
+ * DoctorAppointmentsPage's "Open Patient" link navigates by — see
+ * getPatientByIdForDoctor above) is resolved via the same
+ * (mother_id, doctor_id) pairing Mother's own requestMyAppointment() uses to
+ * derive doctor_id/hospital_id from the mother's active care assignment —
+ * not a new relationship. LEFT JOIN (not JOIN) so an appointment is never
+ * silently dropped from the list if that pairing no longer resolves to a
+ * currently-active assignment; patient_id is just null in that case.
+ */
+export async function listMyAppointments(doctorId: string): Promise<DoctorAppointmentRow[]> {
+  const result = await pool.query<DoctorAppointmentRow>(
+    `SELECT
+       a.id AS appointment_id, pcr.id AS patient_id, u.name AS patient_name,
+       a.doctor_id, a.hospital_id, a.category, a.title,
+       a.appt_date, a.appt_time, a.location, a.notes, a.status
+     FROM appointments a
+     JOIN users u ON u.id = a.mother_id
+     LEFT JOIN patient_care_records pcr
+       ON pcr.mother_id = a.mother_id AND pcr.doctor_id = a.doctor_id AND pcr.is_active = true
+     WHERE a.doctor_id = $1
+     ORDER BY a.appt_date ASC, a.appt_time ASC`,
+    [doctorId]
+  );
+  return result.rows;
+}

@@ -6,8 +6,9 @@ import { Card } from '@/components/ui/Card';
 import { Select } from '@/components/ui/Select';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { mockDoctor } from '@/data/mockData';
-import { getAppointmentsForDoctor } from '@/data/doctorPatientsMockData';
+import * as doctorService from '@/services/doctorService';
+import { useAsyncData } from '@/hooks/useAsyncData';
+import { AsyncStateView } from '@/pages/hospital/components/AsyncStateView';
 import { getAppointmentStatusBadgeVariant } from '@/pages/doctor/doctorUi';
 import { DoctorAppointmentStatus } from '@/types';
 
@@ -23,7 +24,8 @@ export const DoctorAppointmentsPage: React.FC = () => {
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<'ALL' | DoctorAppointmentStatus>('ALL');
 
-  const allAppointments = useMemo(() => getAppointmentsForDoctor(mockDoctor.id), []);
+  const [appointmentsState, reloadAppointments] = useAsyncData(() => doctorService.getMyAppointments(), []);
+  const allAppointments = appointmentsState.status === 'success' ? appointmentsState.data : [];
 
   const filteredAppointments = useMemo(() => {
     if (statusFilter === 'ALL') return allAppointments;
@@ -54,7 +56,14 @@ export const DoctorAppointmentsPage: React.FC = () => {
         </div>
       </Card>
 
-      {filteredAppointments.length === 0 ? (
+      {appointmentsState.status !== 'success' ? (
+        <AsyncStateView
+          status={appointmentsState.status}
+          loadingLabel="Loading appointments…"
+          errorMessage={appointmentsState.status === 'error' ? appointmentsState.message : undefined}
+          onRetry={reloadAppointments}
+        />
+      ) : filteredAppointments.length === 0 ? (
         <Card className="bg-warm-ivory border-sandal-100">
           <div className="text-center py-12">
             <CalendarCheck className="w-10 h-10 text-sandal-300 mx-auto mb-4" />

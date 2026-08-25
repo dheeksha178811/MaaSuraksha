@@ -1,14 +1,12 @@
 // ---------------------------------------------------------------------------
-// Real backend client for the doctor-domain APIs — Phase 6 Part 5.
+// Real backend client for the doctor-domain APIs — Phase 6 Parts 5-7.
 //
-// Unlike the mother domain, there is no dedicated /api/doctor/* route group:
-// the only real backend surface for a doctor account is the generic,
-// role-aware self-service endpoints already used by every role (GET/PATCH
-// /auth/me, GET/PATCH /auth/me/settings — see authRoutes.ts and
-// settingsService.ts's per-role branches). This client wraps exactly that
-// surface for the doctor role, following the same fetch/token/mapping
-// pattern as motherService.ts. Patients, appointments, messages,
-// notifications, care plans, and reports have no backend API yet and stay
+// Doctor self-service (profile/settings) goes through the generic,
+// role-aware endpoints every role shares (GET/PATCH /auth/me, GET/PATCH
+// /auth/me/settings). Patient roster/detail and appointments go through the
+// dedicated /api/doctor/* route group (Parts 6-7), reusing the appointments
+// table Mother's own appointment API already writes to. Messages,
+// notifications, care plans, and reports still have no backend API and stay
 // on mock data — see PROJECT_STATE.md / this phase's report.
 // ---------------------------------------------------------------------------
 
@@ -16,6 +14,9 @@ import { API_BASE_URL, AuthApiError, AuthNetworkError, TOKEN_STORAGE_KEY } from 
 import {
   AssignedPatient,
   ChildProfile,
+  DoctorAppointment,
+  DoctorAppointmentStatus,
+  DoctorAppointmentType,
   DoctorAvailabilityPreferences,
   DoctorCommunicationPreferences,
   DoctorNotificationPreferences,
@@ -293,4 +294,51 @@ function toDoctorPatientDetail(row: AssignedPatientDetailRowShape): DoctorPatien
 export async function getPatientDetail(patientId: string): Promise<DoctorPatientDetail> {
   const body = await get(`/doctor/patients/${patientId}`);
   return toDoctorPatientDetail(body.patient as AssignedPatientDetailRowShape);
+}
+
+// --- Appointments ---------------------------------------------------------------
+
+interface DoctorAppointmentRowShape {
+  appointment_id: string;
+  patient_id: string | null;
+  patient_name: string;
+  doctor_id: string;
+  hospital_id: string;
+  category: string | null;
+  title: string | null;
+  appt_date: string | null;
+  appt_time: string | null;
+  location: string | null;
+  notes: string | null;
+  status: string | null;
+}
+
+function toDoctorAppointment(row: DoctorAppointmentRowShape): DoctorAppointment {
+  return {
+    appointmentId: row.appointment_id,
+    // Empty only if this appointment's (mother, doctor) pairing no longer
+    // matches a currently-active patient_care_records assignment (e.g. the
+    // mother has since been reassigned) — "Open Patient" degrades to the
+    // existing not-found state rather than being fabricated.
+    patientId: row.patient_id ?? '',
+    patientName: row.patient_name,
+    doctorId: row.doctor_id,
+    hospitalId: row.hospital_id,
+    // title/category are the real values Mother's own appointment write path
+    // already stored (see appointmentService.ts's CATEGORY_LABELS) — not
+    // necessarily an exact match for DoctorAppointmentType's literal union,
+    // but DoctorAppointmentsPage only ever renders this as plain text.
+    type: (row.title || row.category || 'Appointment') as DoctorAppointmentType,
+    date: row.appt_date ?? '',
+    // Postgres TIME comes back as "HH:MM:SS" — trimmed to "HH:MM" for display.
+    time: row.appt_time ? row.appt_time.slice(0, 5) : '',
+    status: (row.status as DoctorAppointmentStatus) ?? 'upcoming',
+    location: row.location ?? '',
+    notes: row.notes ?? undefined,
+  };
+}
+
+export async function getMyAppointments(): Promise<DoctorAppointment[]> {
+  const body = await get('/doctor/appointments');
+  return ((body.appointments as DoctorAppointmentRowShape[]) ?? []).map(toDoctorAppointment);
 }
