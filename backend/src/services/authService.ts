@@ -1,9 +1,12 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import { Pool, PoolClient } from 'pg';
 import { pool } from '../config/db';
 import { signToken } from '../utils/jwt';
-import { createProfileForRole, getProfileForRole } from './profileService';
+import { createProfileForRole, getProfileForRole, updateProfileForRole } from './profileService';
 import { isPgError, PG_ERROR_CODES } from '../utils/dbErrors';
+
+type Queryable = Pool | PoolClient;
 
 const SALT_ROUNDS = 12;
 const RESET_TOKEN_TTL_MINUTES = 30;
@@ -173,6 +176,123 @@ export async function getCurrentUser(userId: string): Promise<CurrentUser> {
     ...toAuthUser(row),
     isActive: row.is_active,
     profile,
+  };
+}
+
+export interface UpdateMePayload {
+  phone?: string;
+  email?: string;
+  profile?: Record<string, unknown>;
+}
+
+function translateProfileUpdateError(error: unknown): never {
+  if (isPgError(error)) {
+    if (error.code === PG_ERROR_CODES.UNIQUE_VIOLATION) {
+      throw new AuthError('A record with a duplicate unique value already exists (e.g. email).', 409);
+    }
+    if (error.code === PG_ERROR_CODES.CHECK_VIOLATION || error.code === PG_ERROR_CODES.NOT_NULL_VIOLATION) {
+      throw new AuthError('One or more fields failed a database validation rule.', 400);
+    }
+  }
+  throw error;
+}
+
+async function updateUserRow(
+  executor: Queryable,
+  userId: string,
+  patch: { phone?: string; email?: string }
+): Promise<UserRow | null> {
+  const result = await executor.query<UserRow>(
+    `UPDATE users
+     SET phone = COALESCE($2, phone),
+         email = COALESCE($3, email),
+         updated_at = now()
+     WHERE id = $1
+     RETURNING id, email, password_hash, phone, role, avatar_url, is_active, created_at`,
+    [userId, patch.phone ?? null, patch.email ?? null]
+  );
+  return result.rows[0] ?? null;
+}
+
+/**
+ * Identity comes exclusively from (userId, role) resolved by the caller from
+ * req.user — never from request body/query. A client can never change role
+ * through this path: role is only ever read here, never written.
+ *
+ * Transaction behavior: only wraps users + profile updates in one
+ * BEGIN/COMMIT/ROLLBACK when BOTH are being written in the same call, so
+ * they can't partially succeed. A patch touching only one table skips the
+ * transaction entirely.
+ */
+export async function updateCurrentUser(
+  userId: string,
+  role: string,
+  patch: UpdateMePayload
+): Promise<CurrentUser> {
+  const hasUserFields = patch.phone !== undefined || patch.email !== undefined;
+  const hasProfileFields = patch.profile !== undefined && Object.keys(patch.profile).length > 0;
+
+  let userRow: UserRow | null;
+  let profileRow: Record<string, unknown> | null;
+
+  if (hasUserFields && hasProfileFields) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      userRow = await updateUserRow(client, userId, patch);
+      if (!userRow) {
+        throw new AuthError('User not found.', 404);
+      }
+      profileRow = await updateProfileForRole(client, userId, role, patch.profile!);
+      if (!profileRow) {
+        throw new AuthError('Profile not found for this account.', 404);
+      }
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      translateProfileUpdateError(error);
+    } finally {
+      client.release();
+    }
+  } else if (hasUserFields) {
+    try {
+      userRow = await updateUserRow(pool, userId, patch);
+    } catch (error) {
+      translateProfileUpdateError(error);
+    }
+    if (!userRow) {
+      throw new AuthError('User not found.', 404);
+    }
+    profileRow = await getProfileForRole(userId, role);
+    if (!profileRow) {
+      throw new AuthError('Profile not found for this account.', 404);
+    }
+  } else if (hasProfileFields) {
+    try {
+      profileRow = await updateProfileForRole(pool, userId, role, patch.profile!);
+    } catch (error) {
+      translateProfileUpdateError(error);
+    }
+    if (!profileRow) {
+      throw new AuthError('Profile not found for this account.', 404);
+    }
+    const result = await pool.query<UserRow>(
+      `SELECT id, email, password_hash, phone, role, avatar_url, is_active, created_at
+       FROM users WHERE id = $1`,
+      [userId]
+    );
+    userRow = result.rows[0] ?? null;
+    if (!userRow) {
+      throw new AuthError('User not found.', 404);
+    }
+  } else {
+    throw new AuthError('No fields provided to update.', 400);
+  }
+
+  return {
+    ...toAuthUser(userRow),
+    isActive: userRow.is_active,
+    profile: profileRow,
   };
 }
 

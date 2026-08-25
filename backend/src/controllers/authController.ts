@@ -3,6 +3,7 @@ import {
   registerUser,
   loginUser,
   getCurrentUser,
+  updateCurrentUser,
   requestPasswordReset,
   resetPassword as resetPasswordService,
   changePassword as changePasswordService,
@@ -114,6 +115,27 @@ export async function getMe(req: Request, res: Response) {
     }
     logger.error('Fetch current user failed', error);
     res.status(500).json({ success: false, message: 'Unable to fetch current user.' });
+  }
+}
+
+export async function updateMe(req: Request, res: Response) {
+  if (!req.user) {
+    res.status(401).json({ success: false, message: 'Authentication token is required.' });
+    return;
+  }
+
+  const { phone, email, profile } = req.body ?? {};
+
+  try {
+    const user = await updateCurrentUser(req.user.id, req.user.role, { phone, email, profile });
+    res.status(200).json({ success: true, user });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      res.status(error.status).json({ success: false, message: error.message });
+      return;
+    }
+    logger.error('Update current user failed', error);
+    res.status(500).json({ success: false, message: 'Unable to update current user.' });
   }
 }
 

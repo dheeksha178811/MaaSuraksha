@@ -188,3 +188,109 @@ export function validateProfileByRole(role: string, profile: unknown): string[] 
       return [];
   }
 }
+
+// ---------------------------------------------------------------------------
+// Update (PATCH) validators. Deliberately narrower than the create validators
+// above: only fields the authenticated user is allowed to self-edit are
+// accepted at all — anything else is rejected outright rather than silently
+// ignored, so a client can never mass-assign an unlisted column (e.g. a
+// doctor's specialization/qualification/hospitalId, which are credentialing
+// fields managed by MaaSuraksha, not by the doctor).
+// ---------------------------------------------------------------------------
+
+const MOTHER_UPDATE_FIELDS = ['age', 'stage', 'pregnancyWeek', 'deliveryDate', 'bloodGroup', 'location'];
+const DOCTOR_UPDATE_FIELDS = ['location', 'bio'];
+const HOSPITAL_UPDATE_FIELDS = ['address', 'city', 'state', 'postalCode', 'contactNumber', 'totalBeds'];
+const ADMIN_UPDATE_FIELDS = ['title', 'jurisdictionLevel'];
+
+function unsupportedFieldErrors(profile: ProfileInput, allowed: string[]): string[] {
+  const unknown = Object.keys(profile).filter((key) => !allowed.includes(key));
+  return unknown.length > 0 ? [`Unsupported profile field(s): ${unknown.join(', ')}.`] : [];
+}
+
+export function validateMotherProfileUpdate(profile: ProfileInput): string[] {
+  const errors = unsupportedFieldErrors(profile, MOTHER_UPDATE_FIELDS);
+
+  if (profile.age !== undefined && (!isFiniteNumber(profile.age) || profile.age < 0 || profile.age > 120)) {
+    errors.push('profile.age must be a number between 0 and 120.');
+  }
+  if (profile.stage !== undefined && (!isString(profile.stage) || !MOTHER_STAGES.includes(profile.stage))) {
+    errors.push(`profile.stage must be one of: ${MOTHER_STAGES.join(', ')}.`);
+  }
+  if (
+    profile.pregnancyWeek !== undefined &&
+    (!isFiniteNumber(profile.pregnancyWeek) || profile.pregnancyWeek < 0 || profile.pregnancyWeek > 45)
+  ) {
+    errors.push('profile.pregnancyWeek must be a number between 0 and 45.');
+  }
+  if (profile.deliveryDate !== undefined && !isISODateString(profile.deliveryDate)) {
+    errors.push('profile.deliveryDate must be a valid date.');
+  }
+  if (profile.bloodGroup !== undefined && !isString(profile.bloodGroup)) {
+    errors.push('profile.bloodGroup must be a string.');
+  }
+  if (profile.location !== undefined && !isString(profile.location)) {
+    errors.push('profile.location must be a string.');
+  }
+
+  return errors;
+}
+
+export function validateDoctorProfileUpdate(profile: ProfileInput): string[] {
+  const errors = unsupportedFieldErrors(profile, DOCTOR_UPDATE_FIELDS);
+
+  if (profile.location !== undefined && !isString(profile.location)) {
+    errors.push('profile.location must be a string.');
+  }
+  if (profile.bio !== undefined && !isString(profile.bio)) {
+    errors.push('profile.bio must be a string.');
+  }
+
+  return errors;
+}
+
+export function validateHospitalProfileUpdate(profile: ProfileInput): string[] {
+  const errors = unsupportedFieldErrors(profile, HOSPITAL_UPDATE_FIELDS);
+
+  for (const field of ['address', 'city', 'state', 'postalCode', 'contactNumber']) {
+    if (profile[field] !== undefined && !isString(profile[field])) {
+      errors.push(`profile.${field} must be a string.`);
+    }
+  }
+  if (profile.totalBeds !== undefined && (!isFiniteNumber(profile.totalBeds) || profile.totalBeds < 0)) {
+    errors.push('profile.totalBeds must be a non-negative number.');
+  }
+
+  return errors;
+}
+
+export function validateAdminProfileUpdate(profile: ProfileInput): string[] {
+  const errors = unsupportedFieldErrors(profile, ADMIN_UPDATE_FIELDS);
+
+  if (profile.title !== undefined && !isString(profile.title)) {
+    errors.push('profile.title must be a string.');
+  }
+  if (profile.jurisdictionLevel !== undefined && !isString(profile.jurisdictionLevel)) {
+    errors.push('profile.jurisdictionLevel must be a string.');
+  }
+
+  return errors;
+}
+
+export function validateProfileUpdateByRole(role: string, profile: unknown): string[] {
+  const input: ProfileInput =
+    profile && typeof profile === 'object' && !Array.isArray(profile) ? (profile as ProfileInput) : {};
+
+  switch (role) {
+    case 'mother':
+      return validateMotherProfileUpdate(input);
+    case 'doctor':
+      return validateDoctorProfileUpdate(input);
+    case 'hospital':
+      return validateHospitalProfileUpdate(input);
+    case 'admin':
+      return validateAdminProfileUpdate(input);
+    default:
+      return Object.keys(input).length > 0 ? ['No profile fields are editable for this role.'] : [];
+  }
+}

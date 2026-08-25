@@ -1,7 +1,8 @@
-import { PoolClient } from 'pg';
+import { Pool, PoolClient } from 'pg';
 import { pool } from '../config/db';
 
 type ProfileInput = Record<string, unknown>;
+type Queryable = Pool | PoolClient;
 
 async function createMotherProfile(client: PoolClient, userId: string, profile: ProfileInput) {
   const result = await client.query(
@@ -139,4 +140,115 @@ export async function getProfileForRole(
       return null;
   }
   return result.rows[0] ?? null;
+}
+
+/**
+ * Each field uses COALESCE(new, existing) so a partial patch only touches
+ * the columns actually present in the whitelisted input — omitted fields
+ * keep their current value at the database level, and the column set here
+ * is exactly the caller-approved editable subset (never all table columns).
+ */
+async function updateMotherProfileRow(client: Queryable, userId: string, profile: ProfileInput) {
+  const result = await client.query(
+    `UPDATE mother_profiles
+     SET age = COALESCE($2, age),
+         stage = COALESCE($3, stage),
+         pregnancy_week = COALESCE($4, pregnancy_week),
+         delivery_date = COALESCE($5, delivery_date),
+         blood_group = COALESCE($6, blood_group),
+         location = COALESCE($7, location),
+         updated_at = now()
+     WHERE id = $1
+     RETURNING *`,
+    [
+      userId,
+      profile.age ?? null,
+      profile.stage ?? null,
+      profile.pregnancyWeek ?? null,
+      profile.deliveryDate ?? null,
+      profile.bloodGroup ?? null,
+      profile.location ?? null,
+    ]
+  );
+  return result.rows[0] ?? null;
+}
+
+// Only location/bio are self-editable here — specialization, qualification,
+// and hospitalId are credentialing fields the frontend treats as managed by
+// MaaSuraksha, not by the doctor themselves.
+async function updateDoctorProfileRow(client: Queryable, userId: string, profile: ProfileInput) {
+  const result = await client.query(
+    `UPDATE doctor_profiles
+     SET location = COALESCE($2, location),
+         bio = COALESCE($3, bio),
+         updated_at = now()
+     WHERE id = $1
+     RETURNING *`,
+    [userId, profile.location ?? null, profile.bio ?? null]
+  );
+  return result.rows[0] ?? null;
+}
+
+async function updateHospitalProfileRow(client: Queryable, userId: string, profile: ProfileInput) {
+  const result = await client.query(
+    `UPDATE hospital_profiles
+     SET address = COALESCE($2, address),
+         city = COALESCE($3, city),
+         state = COALESCE($4, state),
+         postal_code = COALESCE($5, postal_code),
+         contact_number = COALESCE($6, contact_number),
+         total_beds = COALESCE($7, total_beds),
+         updated_at = now()
+     WHERE id = $1
+     RETURNING *`,
+    [
+      userId,
+      profile.address ?? null,
+      profile.city ?? null,
+      profile.state ?? null,
+      profile.postalCode ?? null,
+      profile.contactNumber ?? null,
+      profile.totalBeds ?? null,
+    ]
+  );
+  return result.rows[0] ?? null;
+}
+
+async function updateAdminProfileRow(client: Queryable, userId: string, profile: ProfileInput) {
+  const result = await client.query(
+    `UPDATE admin_profiles
+     SET title = COALESCE($2, title),
+         jurisdiction_level = COALESCE($3, jurisdiction_level),
+         updated_at = now()
+     WHERE id = $1
+     RETURNING *`,
+    [userId, profile.title ?? null, profile.jurisdictionLevel ?? null]
+  );
+  return result.rows[0] ?? null;
+}
+
+/**
+ * Write-side counterpart to getProfileForRole. Accepts either the shared
+ * pool or a transaction client so a caller updating both users and the
+ * profile table can do so atomically. Returns null (never auto-creates) if
+ * the authenticated user has no row in their role's profile table.
+ */
+export async function updateProfileForRole(
+  client: Queryable,
+  userId: string,
+  role: string,
+  profile: ProfileInput
+): Promise<Record<string, unknown> | null> {
+  switch (role) {
+    case 'mother':
+      return updateMotherProfileRow(client, userId, profile);
+    case 'doctor':
+      return updateDoctorProfileRow(client, userId, profile);
+    case 'hospital':
+      return updateHospitalProfileRow(client, userId, profile);
+    case 'admin':
+      return updateAdminProfileRow(client, userId, profile);
+    default:
+      return null;
+  }
 }
