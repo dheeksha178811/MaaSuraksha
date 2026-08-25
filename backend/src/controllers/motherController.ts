@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { listMyGrowthMeasurements, logMyGrowthMeasurement } from '../services/growthMeasurementService';
 import { listMyMilestones, markMyMilestoneAchieved } from '../services/milestoneService';
+import { listMyVaccinations, toggleMyVaccinationReminder } from '../services/vaccinationService';
 import { AuthError } from '../services/authService';
 import { logger } from '../utils/logger';
 
@@ -87,5 +88,43 @@ export async function markMilestoneAchieved(req: Request, res: Response) {
     }
     logger.error('Mark milestone achieved failed', error);
     res.status(500).json({ success: false, message: 'Unable to mark milestone achieved.' });
+  }
+}
+
+export async function getMyVaccinations(req: Request, res: Response) {
+  if (!req.user) {
+    res.status(401).json({ success: false, message: 'Authentication token is required.' });
+    return;
+  }
+
+  try {
+    const vaccinations = await listMyVaccinations(req.user.id);
+    res.status(200).json({ success: true, vaccinations });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      res.status(error.status).json({ success: false, message: error.message });
+      return;
+    }
+    logger.error('Fetch vaccinations failed', error);
+    res.status(500).json({ success: false, message: 'Unable to fetch vaccinations.' });
+  }
+}
+
+export async function toggleVaccinationReminder(req: Request, res: Response) {
+  if (!req.user) {
+    res.status(401).json({ success: false, message: 'Authentication token is required.' });
+    return;
+  }
+
+  try {
+    const vaccination = await toggleMyVaccinationReminder(req.user.id, req.params.vaccinationId);
+    res.status(200).json({ success: true, vaccination });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      res.status(error.status).json({ success: false, message: error.message });
+      return;
+    }
+    logger.error('Toggle vaccination reminder failed', error);
+    res.status(500).json({ success: false, message: 'Unable to toggle vaccination reminder.' });
   }
 }
