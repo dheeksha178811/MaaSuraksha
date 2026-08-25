@@ -111,3 +111,73 @@ export async function requestMyAppointment(motherId: string, input: RequestAppoi
   );
   return result.rows[0];
 }
+
+/**
+ * Ported verbatim from motherAppointmentsMockData.ts's isCancellable() and
+ * isReschedulable() — both are defined with the exact same status set, and
+ * MotherAppointmentsPage.tsx gates both the Cancel and Reschedule buttons
+ * on it (`onCancel={isCancellable(status) ? ... : undefined}`, same for
+ * reschedule). Not invented here.
+ */
+const CANCELLABLE_STATUSES = ['upcoming', 'requested', 'rescheduled'];
+
+async function getOwnedAppointment(motherId: string, appointmentId: string): Promise<AppointmentRow> {
+  const result = await pool.query<AppointmentRow>(
+    `SELECT ${COLUMNS} FROM appointments WHERE id = $1 AND mother_id = $2`,
+    [appointmentId, motherId]
+  );
+  const appointment = result.rows[0];
+  if (!appointment) {
+    throw new AuthError('Appointment not found for this account.', 404);
+  }
+  return appointment;
+}
+
+/**
+ * Mirrors MotherAppointmentsPage.tsx's handleConfirmCancel exactly: only
+ * `status` changes to 'cancelled', nothing else.
+ */
+export async function cancelMyAppointment(motherId: string, appointmentId: string): Promise<AppointmentRow> {
+  const appointment = await getOwnedAppointment(motherId, appointmentId);
+
+  if (!CANCELLABLE_STATUSES.includes(appointment.status ?? '')) {
+    throw new AuthError(`An appointment with status "${appointment.status}" cannot be cancelled.`, 409);
+  }
+
+  const result = await pool.query<AppointmentRow>(
+    `UPDATE appointments
+     SET status = 'cancelled', updated_at = now()
+     WHERE id = $1 AND mother_id = $2
+     RETURNING ${COLUMNS}`,
+    [appointmentId, motherId]
+  );
+  return result.rows[0];
+}
+
+/**
+ * Mirrors MotherAppointmentsPage.tsx's handleConfirmReschedule exactly:
+ * date, time, and status change to 'rescheduled' — everything else
+ * (doctor, hospital, category, title, reason) is left untouched, matching
+ * the mock's `{ ...a, date: newDate, time: newTime, status: 'rescheduled' }`.
+ */
+export async function rescheduleMyAppointment(
+  motherId: string,
+  appointmentId: string,
+  newDate: string,
+  newTime: string
+): Promise<AppointmentRow> {
+  const appointment = await getOwnedAppointment(motherId, appointmentId);
+
+  if (!CANCELLABLE_STATUSES.includes(appointment.status ?? '')) {
+    throw new AuthError(`An appointment with status "${appointment.status}" cannot be rescheduled.`, 409);
+  }
+
+  const result = await pool.query<AppointmentRow>(
+    `UPDATE appointments
+     SET appt_date = $3, appt_time = $4, status = 'rescheduled', updated_at = now()
+     WHERE id = $1 AND mother_id = $2
+     RETURNING ${COLUMNS}`,
+    [appointmentId, motherId, newDate, newTime]
+  );
+  return result.rows[0];
+}

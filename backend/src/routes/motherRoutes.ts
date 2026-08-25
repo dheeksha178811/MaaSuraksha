@@ -13,13 +13,19 @@ import {
   toggleNutritionReminder,
   getMyAppointments,
   requestAppointment,
+  cancelAppointment,
+  rescheduleAppointment,
 } from '../controllers/motherController';
 import { validateLogGrowthMeasurement } from '../validators/growthValidators';
 import { validateMarkMilestoneAchieved } from '../validators/milestoneValidators';
 import { validateToggleVaccinationReminder } from '../validators/vaccinationValidators';
 import { validateAdjustDailyGoal } from '../validators/dailyGoalValidators';
 import { validateToggleNutritionReminder } from '../validators/nutritionReminderValidators';
-import { validateRequestAppointment } from '../validators/appointmentValidators';
+import {
+  validateRequestAppointment,
+  validateCancelAppointment,
+  validateRescheduleAppointment,
+} from '../validators/appointmentValidators';
 import { authenticate } from '../middleware/authenticate';
 import { requireRole } from '../middleware/requireRole';
 
@@ -38,5 +44,7 @@ router.get('/nutrition-reminders', authenticate, requireRole('mother'), getMyNut
 router.patch('/nutrition-reminders/:reminderId/toggle', authenticate, requireRole('mother'), validateToggleNutritionReminder, toggleNutritionReminder);
 router.get('/appointments', authenticate, requireRole('mother'), getMyAppointments);
 router.post('/appointments', authenticate, requireRole('mother'), validateRequestAppointment, requestAppointment);
+router.patch('/appointments/:appointmentId/cancel', authenticate, requireRole('mother'), validateCancelAppointment, cancelAppointment);
+router.patch('/appointments/:appointmentId/reschedule', authenticate, requireRole('mother'), validateRescheduleAppointment, rescheduleAppointment);
 
 export default router;

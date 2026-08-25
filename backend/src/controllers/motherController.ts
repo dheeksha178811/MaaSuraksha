@@ -4,7 +4,7 @@ import { listMyMilestones, markMyMilestoneAchieved } from '../services/milestone
 import { listMyVaccinations, toggleMyVaccinationReminder } from '../services/vaccinationService';
 import { listMyDailyGoals, incrementMyDailyGoal, decrementMyDailyGoal } from '../services/dailyGoalService';
 import { listMyNutritionReminders, toggleMyNutritionReminder } from '../services/nutritionReminderService';
-import { listMyAppointments, requestMyAppointment } from '../services/appointmentService';
+import { listMyAppointments, requestMyAppointment, cancelMyAppointment, rescheduleMyAppointment } from '../services/appointmentService';
 import { AuthError } from '../services/authService';
 import { logger } from '../utils/logger';
 
@@ -269,5 +269,45 @@ export async function requestAppointment(req: Request, res: Response) {
     }
     logger.error('Request appointment failed', error);
     res.status(500).json({ success: false, message: 'Unable to request appointment.' });
+  }
+}
+
+export async function cancelAppointment(req: Request, res: Response) {
+  if (!req.user) {
+    res.status(401).json({ success: false, message: 'Authentication token is required.' });
+    return;
+  }
+
+  try {
+    const appointment = await cancelMyAppointment(req.user.id, req.params.appointmentId);
+    res.status(200).json({ success: true, appointment });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      res.status(error.status).json({ success: false, message: error.message });
+      return;
+    }
+    logger.error('Cancel appointment failed', error);
+    res.status(500).json({ success: false, message: 'Unable to cancel appointment.' });
+  }
+}
+
+export async function rescheduleAppointment(req: Request, res: Response) {
+  if (!req.user) {
+    res.status(401).json({ success: false, message: 'Authentication token is required.' });
+    return;
+  }
+
+  const { newDate, newTime } = req.body ?? {};
+
+  try {
+    const appointment = await rescheduleMyAppointment(req.user.id, req.params.appointmentId, newDate, newTime);
+    res.status(200).json({ success: true, appointment });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      res.status(error.status).json({ success: false, message: error.message });
+      return;
+    }
+    logger.error('Reschedule appointment failed', error);
+    res.status(500).json({ success: false, message: 'Unable to reschedule appointment.' });
   }
 }
