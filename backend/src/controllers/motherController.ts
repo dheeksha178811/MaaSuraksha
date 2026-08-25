@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { listMyGrowthMeasurements, logMyGrowthMeasurement } from '../services/growthMeasurementService';
 import { listMyMilestones, markMyMilestoneAchieved } from '../services/milestoneService';
 import { listMyVaccinations, toggleMyVaccinationReminder } from '../services/vaccinationService';
+import { listMyDailyGoals, incrementMyDailyGoal, decrementMyDailyGoal } from '../services/dailyGoalService';
 import { AuthError } from '../services/authService';
 import { logger } from '../utils/logger';
 
@@ -126,5 +127,62 @@ export async function toggleVaccinationReminder(req: Request, res: Response) {
     }
     logger.error('Toggle vaccination reminder failed', error);
     res.status(500).json({ success: false, message: 'Unable to toggle vaccination reminder.' });
+  }
+}
+
+export async function getMyDailyGoals(req: Request, res: Response) {
+  if (!req.user) {
+    res.status(401).json({ success: false, message: 'Authentication token is required.' });
+    return;
+  }
+
+  try {
+    const goals = await listMyDailyGoals(req.user.id);
+    res.status(200).json({ success: true, goals });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      res.status(error.status).json({ success: false, message: error.message });
+      return;
+    }
+    logger.error('Fetch daily goals failed', error);
+    res.status(500).json({ success: false, message: 'Unable to fetch daily goals.' });
+  }
+}
+
+export async function incrementDailyGoal(req: Request, res: Response) {
+  if (!req.user) {
+    res.status(401).json({ success: false, message: 'Authentication token is required.' });
+    return;
+  }
+
+  try {
+    const goal = await incrementMyDailyGoal(req.user.id, req.params.goalId);
+    res.status(200).json({ success: true, goal });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      res.status(error.status).json({ success: false, message: error.message });
+      return;
+    }
+    logger.error('Increment daily goal failed', error);
+    res.status(500).json({ success: false, message: 'Unable to increment daily goal.' });
+  }
+}
+
+export async function decrementDailyGoal(req: Request, res: Response) {
+  if (!req.user) {
+    res.status(401).json({ success: false, message: 'Authentication token is required.' });
+    return;
+  }
+
+  try {
+    const goal = await decrementMyDailyGoal(req.user.id, req.params.goalId);
+    res.status(200).json({ success: true, goal });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      res.status(error.status).json({ success: false, message: error.message });
+      return;
+    }
+    logger.error('Decrement daily goal failed', error);
+    res.status(500).json({ success: false, message: 'Unable to decrement daily goal.' });
   }
 }
