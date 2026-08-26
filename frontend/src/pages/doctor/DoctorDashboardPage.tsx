@@ -14,48 +14,93 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { mockDoctor, mockHospital } from '@/data/mockData';
-import {
-  getDoctorAlerts,
-  getDoctorDashboardSummary,
-  getFollowUpsDue,
-  getReportsAwaitingReview,
-  getTodaysAppointments,
-  getUpcomingAppointments,
-} from '@/data/doctorPatientsMockData';
+import { getDoctorAlerts, getReportsAwaitingReview } from '@/data/doctorPatientsMockData';
+import * as doctorService from '@/services/doctorService';
+import { useAsyncData } from '@/hooks/useAsyncData';
+import { AsyncStateView } from '@/pages/hospital/components/AsyncStateView';
 import { getAppointmentStatusBadgeVariant } from '@/pages/doctor/doctorUi';
 
 export const DoctorDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const doctorId = mockDoctor.id;
 
-  const summary = getDoctorDashboardSummary(doctorId);
-  const todaysAppointments = getTodaysAppointments(doctorId);
-  const upcomingAppointments = getUpcomingAppointments(doctorId).slice(0, 5);
-  const followUpsDue = getFollowUpsDue(doctorId);
+  // Reports Awaiting Review and Alerts stay on mock data — there is no real
+  // Reports API yet (Phase 6 Part 9 explicitly excluded Reports), and Alerts
+  // composites risk flags + overdue follow-ups with reports-awaiting-review,
+  // so it can't be made fully real without that API either.
   const reportsAwaitingReview = getReportsAwaitingReview(doctorId);
   const alerts = getDoctorAlerts(doctorId);
 
+  const [patientsState, reloadPatients] = useAsyncData(() => doctorService.getMyPatients(), []);
+  const [appointmentsState, reloadAppointments] = useAsyncData(() => doctorService.getMyAppointments(), []);
+
+  const reload = () => {
+    reloadPatients();
+    reloadAppointments();
+  };
+
+  const headerProps = {
+    title: `Welcome, ${mockDoctor.name}`,
+    subtitle: `${mockDoctor.specialization} • ${mockHospital.name}`,
+    badge: <Badge variant="sandal">Doctor Portal</Badge>,
+    actions: (
+      <Link to="/doctor/patients">
+        <Button variant="outline" size="sm" rightIcon={<ChevronRight className="w-4 h-4" />}>
+          My Patients
+        </Button>
+      </Link>
+    ),
+  };
+
+  if (patientsState.status === 'loading' || appointmentsState.status === 'loading') {
+    return (
+      <div className="space-y-6">
+        <PageHeader {...headerProps} />
+        <AsyncStateView status="loading" loadingLabel="Loading your dashboard…" />
+      </div>
+    );
+  }
+
+  if (patientsState.status === 'error' || appointmentsState.status === 'error') {
+    const errorMessage =
+      patientsState.status === 'error'
+        ? patientsState.message
+        : appointmentsState.status === 'error'
+        ? appointmentsState.message
+        : undefined;
+    return (
+      <div className="space-y-6">
+        <PageHeader {...headerProps} />
+        <AsyncStateView status="error" errorMessage={errorMessage} onRetry={reload} />
+      </div>
+    );
+  }
+
+  const patients = patientsState.data;
+  const appointments = appointmentsState.data;
+
+  // Local calendar date, not the server's — matches the toISOString().slice
+  // pattern already used for "today" elsewhere in this codebase (e.g.
+  // AdminReportsPage/HospitalReportsPage). appt_date round-trips as a
+  // UTC-midnight ISO string, so comparing its first 10 characters against
+  // this is a safe date-only comparison.
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const todaysAppointments = appointments.filter((a) => a.status === 'upcoming' && a.date === todayISO);
+  const upcomingAppointments = appointments
+    .filter((a) => a.status === 'upcoming' && a.date > todayISO)
+    .slice(0, 5);
+  const followUpsDue = appointments.filter((a) => a.status === 'upcoming' && a.date < todayISO);
+
   const statCards = [
-    { label: 'My Patients', value: summary.totalPatients, icon: Users, tone: 'from-sandal-50 to-sandal-100 border-sandal-200 text-sandal-900' },
-    { label: "Today's Appointments", value: summary.todaysAppointmentsCount, icon: CalendarCheck, tone: 'from-blue-50 to-blue-100 border-blue-200 text-blue-900' },
-    { label: 'Follow-ups Due', value: summary.followUpsDueCount, icon: AlertTriangle, tone: 'from-rose-50 to-rose-100 border-rose-200 text-rose-900' },
-    { label: 'Reports Awaiting Review', value: summary.reportsAwaitingReviewCount, icon: FileWarning, tone: 'from-green-50 to-green-100 border-green-200 text-green-900' },
+    { label: 'My Patients', value: patients.length, icon: Users, tone: 'from-sandal-50 to-sandal-100 border-sandal-200 text-sandal-900' },
+    { label: "Today's Appointments", value: todaysAppointments.length, icon: CalendarCheck, tone: 'from-blue-50 to-blue-100 border-blue-200 text-blue-900' },
+    { label: 'Follow-ups Due', value: followUpsDue.length, icon: AlertTriangle, tone: 'from-rose-50 to-rose-100 border-rose-200 text-rose-900' },
+    { label: 'Reports Awaiting Review', value: reportsAwaitingReview.length, icon: FileWarning, tone: 'from-green-50 to-green-100 border-green-200 text-green-900' },
   ];
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title={`Welcome, ${mockDoctor.name}`}
-        subtitle={`${mockDoctor.specialization} • ${mockHospital.name}`}
-        badge={<Badge variant="sandal">Doctor Portal</Badge>}
-        actions={
-          <Link to="/doctor/patients">
-            <Button variant="outline" size="sm" rightIcon={<ChevronRight className="w-4 h-4" />}>
-              My Patients
-            </Button>
-          </Link>
-        }
-      />
+      <PageHeader {...headerProps} />
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
