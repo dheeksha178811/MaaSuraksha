@@ -1,15 +1,15 @@
 // ---------------------------------------------------------------------------
-// Real backend client for the doctor-domain APIs — Phase 6 Parts 5-11.
+// Real backend client for the doctor-domain APIs — Phase 6 Parts 5-12.
 //
 // Doctor self-service (profile/settings) goes through the generic,
 // role-aware endpoints every role shares (GET/PATCH /auth/me, GET/PATCH
 // /auth/me/settings). Patient roster/detail, appointments, care plans,
-// consultation notes, and the doctor's own hospital go through the dedicated
-// /api/doctor/* route group (Parts 6-11), reusing the appointments/
-// care_recommendations/consultation_notes/hospital_profiles tables Mother's/
-// this domain's own write paths already populate. Messages, notifications,
-// and reports still have no backend API and stay on mock data — see
-// PROJECT_STATE.md / this phase's report.
+// consultation notes, the doctor's own hospital, and reports (documents) go
+// through the dedicated /api/doctor/* route group (Parts 6-12), reusing the
+// appointments/care_recommendations/consultation_notes/hospital_profiles/
+// documents tables Mother's/this domain's own write paths already populate.
+// Report upload, messages, and notifications still have no backend API and
+// stay on mock data — see PROJECT_STATE.md / this phase's report.
 // ---------------------------------------------------------------------------
 
 import { API_BASE_URL, AuthApiError, AuthNetworkError, TOKEN_STORAGE_KEY } from '@/services/authApi';
@@ -31,6 +31,9 @@ import {
   PatientStage,
   PatientStatus,
   RecommendationType,
+  Report,
+  ReportCategory,
+  ReportStatus,
 } from '@/types';
 import { defaultDoctorSettings } from '@/data/doctorSettingsMockData';
 
@@ -486,4 +489,47 @@ function toDoctorHospital(row: DoctorHospitalRowShape): DoctorHospitalSummary {
 export async function getMyHospital(): Promise<DoctorHospitalSummary> {
   const body = await get('/doctor/hospital');
   return toDoctorHospital(body.hospital as DoctorHospitalRowShape);
+}
+
+// --- Reports (documents) -----------------------------------------------------------
+
+interface DoctorReportRowShape {
+  document_id: string;
+  patient_id: string;
+  patient_name: string;
+  child_id: string | null;
+  child_name: string | null;
+  name: string;
+  category: string | null;
+  doc_date: string | null;
+  status: string | null;
+  description: string | null;
+  file_size: string | null;
+  file_type: string | null;
+  file_url: string | null;
+  doctor_name: string | null;
+  hospital_name: string | null;
+}
+
+function toReport(row: DoctorReportRowShape): Report {
+  return {
+    id: row.document_id,
+    name: row.name,
+    category: (row.category as ReportCategory) ?? 'OTHER',
+    date: row.doc_date ?? '',
+    doctor: row.doctor_name ?? '',
+    hospital: row.hospital_name ?? '',
+    status: (row.status as ReportStatus) ?? 'PENDING',
+    description: row.description ?? undefined,
+    fileSize: row.file_size ?? undefined,
+    fileType: row.file_type ?? undefined,
+    patientId: row.patient_id,
+  };
+}
+
+// No upload producer exists yet (Part 12 is read-only), so an empty array
+// here is the correct, expected state — not treated as an error.
+export async function getMyReports(): Promise<Report[]> {
+  const body = await get('/doctor/reports');
+  return ((body.reports as DoctorReportRowShape[]) ?? []).map(toReport);
 }

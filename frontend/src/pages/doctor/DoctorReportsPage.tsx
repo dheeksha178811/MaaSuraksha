@@ -6,8 +6,9 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { mockDoctor } from '@/data/mockData';
-import { getPatientsForDoctor, getReportsForDoctorPatients } from '@/data/doctorPatientsMockData';
+import * as doctorService from '@/services/doctorService';
+import { useAsyncData } from '@/hooks/useAsyncData';
+import { AsyncStateView } from '@/pages/hospital/components/AsyncStateView';
 import { REPORT_CATEGORIES } from '@/data/reportsMockData';
 import { ReportDetailsModal } from '@/pages/reports/ReportDetailsModal';
 import { getReportStatusBadgeVariant } from '@/pages/doctor/doctorUi';
@@ -27,8 +28,10 @@ export const DoctorReportsPage: React.FC = () => {
   const [patientFilter, setPatientFilter] = useState('ALL');
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
 
-  const patients = useMemo(() => getPatientsForDoctor(mockDoctor.id), []);
-  const allReports = useMemo(() => getReportsForDoctorPatients(mockDoctor.id), []);
+  const [patientsState] = useAsyncData(() => doctorService.getMyPatients(), []);
+  const [reportsState, reloadReports] = useAsyncData(() => doctorService.getMyReports(), []);
+  const patients = patientsState.status === 'success' ? patientsState.data : [];
+  const allReports = reportsState.status === 'success' ? reportsState.data : [];
 
   const patientOptions = useMemo(
     () => [
@@ -99,7 +102,14 @@ export const DoctorReportsPage: React.FC = () => {
         </div>
       </Card>
 
-      {filteredReports.length === 0 ? (
+      {reportsState.status !== 'success' ? (
+        <AsyncStateView
+          status={reportsState.status}
+          loadingLabel="Loading reports…"
+          errorMessage={reportsState.status === 'error' ? reportsState.message : undefined}
+          onRetry={reloadReports}
+        />
+      ) : filteredReports.length === 0 ? (
         <Card className="bg-warm-ivory border-sandal-100">
           <div className="text-center py-12">
             <FileText className="w-10 h-10 text-sandal-300 mx-auto mb-4" />

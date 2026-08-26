@@ -4,6 +4,7 @@ import {
   getMyCarePlans,
   getMyHospital,
   getMyPatients,
+  getMyReports,
   getPatientConsultationNotes,
   getPatientDetail,
 } from '../controllers/doctorController';
@@ -18,5 +19,6 @@ router.get('/patients/:patientId/consultation-notes', authenticate, requireRole(
 router.get('/appointments', authenticate, requireRole('doctor'), getMyAppointments);
 router.get('/care-plans', authenticate, requireRole('doctor'), getMyCarePlans);
 router.get('/hospital', authenticate, requireRole('doctor'), getMyHospital);
+router.get('/reports', authenticate, requireRole('doctor'), getMyReports);
 
 export default router;

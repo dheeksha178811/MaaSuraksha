@@ -275,3 +275,52 @@ export async function getHospitalForDoctor(doctorId: string): Promise<DoctorHosp
   );
   return result.rows[0] ?? null;
 }
+
+export interface DoctorReportRow {
+  document_id: string;
+  patient_id: string;
+  patient_name: string;
+  child_id: string | null;
+  child_name: string | null;
+  name: string;
+  category: string | null;
+  doc_date: string | null;
+  status: string | null;
+  description: string | null;
+  file_size: string | null;
+  file_type: string | null;
+  file_url: string | null;
+  doctor_name: string | null;
+  hospital_name: string | null;
+}
+
+/**
+ * A doctor's own documents (migration 002's `documents` table), scoped via
+ * patient_care_records the same way care_recommendations is: documents has
+ * no doctor_id column of its own, so ownership is verified by joining
+ * through patient_care_record_id (NOT NULL-required here via inner JOIN) to
+ * a patient_care_records row this doctor owns. A document with no
+ * patient_care_record_id can't be attributed to any doctor and is correctly
+ * excluded. No upload producer exists yet (Phase 6 Part 12 is read-only), so
+ * an empty result is expected, not an error.
+ */
+export async function listMyReports(doctorId: string): Promise<DoctorReportRow[]> {
+  const result = await pool.query<DoctorReportRow>(
+    `SELECT
+       d.id AS document_id, pcr.id AS patient_id, u.name AS patient_name,
+       pcr.child_id, cp.name AS child_name,
+       d.name, d.category, d.doc_date, d.status, d.description,
+       d.file_size, d.file_type, d.file_url,
+       doc_u.name AS doctor_name, hp.facility_name AS hospital_name
+     FROM documents d
+     JOIN patient_care_records pcr ON pcr.id = d.patient_care_record_id
+     JOIN users u ON u.id = pcr.mother_id
+     JOIN users doc_u ON doc_u.id = pcr.doctor_id
+     LEFT JOIN child_profiles cp ON cp.id = pcr.child_id
+     LEFT JOIN hospital_profiles hp ON hp.id = d.hospital_id
+     WHERE pcr.doctor_id = $1
+     ORDER BY d.doc_date DESC NULLS LAST, d.created_at DESC`,
+    [doctorId]
+  );
+  return result.rows;
+}

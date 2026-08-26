@@ -6,6 +6,7 @@ import {
   listMyAppointments,
   listMyCarePlans,
   listMyPatients,
+  listMyReports,
 } from '../services/doctorService';
 import { logger } from '../utils/logger';
 
@@ -108,5 +109,20 @@ export async function getMyHospital(req: Request, res: Response) {
   } catch (error) {
     logger.error('Fetch doctor hospital failed', error);
     res.status(500).json({ success: false, message: 'Unable to fetch hospital.' });
+  }
+}
+
+export async function getMyReports(req: Request, res: Response) {
+  if (!req.user) {
+    res.status(401).json({ success: false, message: 'Authentication token is required.' });
+    return;
+  }
+
+  try {
+    const reports = await listMyReports(req.user.id);
+    res.status(200).json({ success: true, reports });
+  } catch (error) {
+    logger.error('Fetch doctor reports failed', error);
+    res.status(500).json({ success: false, message: 'Unable to fetch reports.' });
   }
 }
