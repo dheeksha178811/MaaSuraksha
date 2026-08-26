@@ -40,7 +40,7 @@ import { defaultDoctorSettings } from '@/data/doctorSettingsMockData';
 export class NotAuthenticatedError extends AuthApiError {}
 
 function getToken(): string {
-  const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+  const token = sessionStorage.getItem(TOKEN_STORAGE_KEY);
   if (!token) {
     throw new NotAuthenticatedError('Sign in with your real account to view this data.');
   }

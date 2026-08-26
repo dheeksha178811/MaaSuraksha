@@ -16,6 +16,10 @@ const MOCK_USERS_BY_ROLE: Record<UserRole, BaseUser> = {
   },
 };
 
+// Tab-scoped, same as TOKEN_STORAGE_KEY (see authApi.ts) — the currently
+// signed-in role is auth-adjacent session state, so it must stay isolated
+// per tab too, not just the token itself, or a stale value here would still
+// leak the wrong role across tabs even after the token was isolated.
 const ROLE_STORAGE_KEY = 'maasuraksha_mock_role';
 
 // Merges the real backend identity fields onto the existing per-role mock
@@ -39,7 +43,7 @@ function toBaseUser(real: RealAuthUser): BaseUser {
 
 export function useMockAuth() {
   const [role, setRole] = useState<UserRole>(() => {
-    return (localStorage.getItem(ROLE_STORAGE_KEY) as UserRole) || 'mother';
+    return (sessionStorage.getItem(ROLE_STORAGE_KEY) as UserRole) || 'mother';
   });
 
   const [user, setUser] = useState<BaseUser>(() => {
@@ -52,7 +56,7 @@ export function useMockAuth() {
   const loginAsRole = (newRole: UserRole) => {
     setRole(newRole);
     setUser(MOCK_USERS_BY_ROLE[newRole]);
-    localStorage.setItem(ROLE_STORAGE_KEY, newRole);
+    sessionStorage.setItem(ROLE_STORAGE_KEY, newRole);
   };
 
   // Real backend login (Phase 6 Part 3). On success, persists the real JWT
@@ -66,8 +70,8 @@ export function useMockAuth() {
     setAuthError(null);
     try {
       const { user: realUser, token } = await loginWithBackend(email, password);
-      localStorage.setItem(TOKEN_STORAGE_KEY, token);
-      localStorage.setItem(ROLE_STORAGE_KEY, realUser.role);
+      sessionStorage.setItem(TOKEN_STORAGE_KEY, token);
+      sessionStorage.setItem(ROLE_STORAGE_KEY, realUser.role);
       setRole(realUser.role);
       setUser(toBaseUser(realUser));
       return realUser;
@@ -81,8 +85,8 @@ export function useMockAuth() {
   };
 
   const logout = () => {
-    localStorage.removeItem(ROLE_STORAGE_KEY);
-    localStorage.removeItem(TOKEN_STORAGE_KEY);
+    sessionStorage.removeItem(ROLE_STORAGE_KEY);
+    sessionStorage.removeItem(TOKEN_STORAGE_KEY);
   };
 
   // On mount, restore a real session if a token was persisted from a
@@ -90,16 +94,16 @@ export function useMockAuth() {
   // now backed by a real account. An invalid/expired token is silently
   // cleared, leaving the existing mock-role state in place.
   useEffect(() => {
-    const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+    const token = sessionStorage.getItem(TOKEN_STORAGE_KEY);
     if (!token) return;
     fetchCurrentUser(token)
       .then((realUser) => {
         setRole(realUser.role);
         setUser(toBaseUser(realUser));
-        localStorage.setItem(ROLE_STORAGE_KEY, realUser.role);
+        sessionStorage.setItem(ROLE_STORAGE_KEY, realUser.role);
       })
       .catch(() => {
-        localStorage.removeItem(TOKEN_STORAGE_KEY);
+        sessionStorage.removeItem(TOKEN_STORAGE_KEY);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

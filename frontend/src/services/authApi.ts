@@ -11,9 +11,15 @@
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
-// Shared with useMockAuth.ts (where the token is written on login) and
-// motherService.ts (where it's read to authenticate mother-domain requests),
-// so every consumer of the persisted JWT agrees on one storage key.
+// Shared with useMockAuth.ts (where the token is written on login) and every
+// domain service's getToken() (motherService.ts, doctorService.ts,
+// hospitalService.ts, adminService.ts, messageService.ts), so every consumer
+// of the persisted JWT agrees on one storage key. Persisted in
+// sessionStorage, not localStorage — sessionStorage is per-tab (each tab/
+// window gets its own copy, even for the same origin) but still survives a
+// same-tab refresh, which is exactly what lets four different roles stay
+// signed in simultaneously across four tabs without one login overwriting
+// another, while a page reload still doesn't log the tab out.
 export const TOKEN_STORAGE_KEY = 'maasuraksha_auth_token';
 
 export type RealUserRole = 'mother' | 'doctor' | 'hospital' | 'admin';
