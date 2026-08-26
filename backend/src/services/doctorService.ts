@@ -230,3 +230,48 @@ export async function listConsultationNotesForPatient(
   );
   return result.rows;
 }
+
+export interface DoctorHospitalRow {
+  hospital_id: string;
+  facility_name: string;
+  facility_type: string | null;
+  license_number: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  postal_code: string | null;
+  contact_number: string | null;
+  total_beds: number;
+  neonatal_icu_available: boolean;
+  status: string;
+  tagline: string | null;
+  established_year: number | null;
+  accreditations: string[] | null;
+  visiting_hours: string | null;
+  emergency_contact_number: string | null;
+  ambulance_available: boolean;
+}
+
+/**
+ * The authenticated doctor's practicing hospital, resolved via
+ * doctor_profiles.hospital_id — the same FK getMyProfile (Phase 6 Part 5)
+ * already reads doctor_profiles through — not a client-supplied hospital id.
+ * Returns null when the doctor has no hospital_id set or the referenced
+ * hospital_profiles row is missing, so the controller 404s instead of
+ * inventing a hospital.
+ */
+export async function getHospitalForDoctor(doctorId: string): Promise<DoctorHospitalRow | null> {
+  const result = await pool.query<DoctorHospitalRow>(
+    `SELECT
+       hp.id AS hospital_id, hp.facility_name, hp.facility_type, hp.license_number,
+       hp.address, hp.city, hp.state, hp.postal_code, hp.contact_number,
+       hp.total_beds, hp.neonatal_icu_available, hp.status, hp.tagline,
+       hp.established_year, hp.accreditations, hp.visiting_hours,
+       hp.emergency_contact_number, hp.ambulance_available
+     FROM doctor_profiles dp
+     JOIN hospital_profiles hp ON hp.id = dp.hospital_id
+     WHERE dp.id = $1`,
+    [doctorId]
+  );
+  return result.rows[0] ?? null;
+}

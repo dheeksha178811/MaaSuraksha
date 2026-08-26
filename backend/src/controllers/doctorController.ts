@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import {
+  getHospitalForDoctor,
   getPatientByIdForDoctor,
   listConsultationNotesForPatient,
   listMyAppointments,
@@ -88,5 +89,24 @@ export async function getPatientConsultationNotes(req: Request, res: Response) {
   } catch (error) {
     logger.error('Fetch patient consultation notes failed', error);
     res.status(500).json({ success: false, message: 'Unable to fetch consultation notes.' });
+  }
+}
+
+export async function getMyHospital(req: Request, res: Response) {
+  if (!req.user) {
+    res.status(401).json({ success: false, message: 'Authentication token is required.' });
+    return;
+  }
+
+  try {
+    const hospital = await getHospitalForDoctor(req.user.id);
+    if (!hospital) {
+      res.status(404).json({ success: false, message: 'No hospital is linked to this doctor account.' });
+      return;
+    }
+    res.status(200).json({ success: true, hospital });
+  } catch (error) {
+    logger.error('Fetch doctor hospital failed', error);
+    res.status(500).json({ success: false, message: 'Unable to fetch hospital.' });
   }
 }

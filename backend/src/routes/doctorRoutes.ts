@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   getMyAppointments,
   getMyCarePlans,
+  getMyHospital,
   getMyPatients,
   getPatientConsultationNotes,
   getPatientDetail,
@@ -16,5 +17,6 @@ router.get('/patients/:patientId', authenticate, requireRole('doctor'), getPatie
 router.get('/patients/:patientId/consultation-notes', authenticate, requireRole('doctor'), getPatientConsultationNotes);
 router.get('/appointments', authenticate, requireRole('doctor'), getMyAppointments);
 router.get('/care-plans', authenticate, requireRole('doctor'), getMyCarePlans);
+router.get('/hospital', authenticate, requireRole('doctor'), getMyHospital);
 
 export default router;

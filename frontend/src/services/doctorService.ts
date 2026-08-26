@@ -1,14 +1,15 @@
 // ---------------------------------------------------------------------------
-// Real backend client for the doctor-domain APIs — Phase 6 Parts 5-9.
+// Real backend client for the doctor-domain APIs — Phase 6 Parts 5-11.
 //
 // Doctor self-service (profile/settings) goes through the generic,
 // role-aware endpoints every role shares (GET/PATCH /auth/me, GET/PATCH
-// /auth/me/settings). Patient roster/detail, appointments, care plans, and
-// consultation notes go through the dedicated /api/doctor/* route group
-// (Parts 6-9), reusing the appointments/care_recommendations/
-// consultation_notes tables Mother's/this domain's own write paths already
-// populate. Messages, notifications, and reports still have no backend API
-// and stay on mock data — see PROJECT_STATE.md / this phase's report.
+// /auth/me/settings). Patient roster/detail, appointments, care plans,
+// consultation notes, and the doctor's own hospital go through the dedicated
+// /api/doctor/* route group (Parts 6-11), reusing the appointments/
+// care_recommendations/consultation_notes/hospital_profiles tables Mother's/
+// this domain's own write paths already populate. Messages, notifications,
+// and reports still have no backend API and stay on mock data — see
+// PROJECT_STATE.md / this phase's report.
 // ---------------------------------------------------------------------------
 
 import { API_BASE_URL, AuthApiError, AuthNetworkError, TOKEN_STORAGE_KEY } from '@/services/authApi';
@@ -409,4 +410,80 @@ function toConsultationNote(row: DoctorConsultationNoteRowShape): ConsultationNo
 export async function getPatientConsultationNotes(patientId: string): Promise<ConsultationNote[]> {
   const body = await get(`/doctor/patients/${patientId}/consultation-notes`);
   return ((body.notes as DoctorConsultationNoteRowShape[]) ?? []).map(toConsultationNote);
+}
+
+// --- Hospital / practice information ---------------------------------------------
+
+export interface DoctorHospitalSummary {
+  hospitalId: string;
+  name: string;
+  facilityType: string;
+  licenseNumber: string;
+  address: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  contactNumber: string;
+  totalBeds: number;
+  neonatalICUAvailable: boolean;
+  status: string;
+  tagline: string;
+  establishedYear: number | null;
+  accreditations: string[];
+  visitingHours: string;
+  emergencyContactNumber: string;
+  ambulanceAvailable: boolean;
+}
+
+interface DoctorHospitalRowShape {
+  hospital_id: string;
+  facility_name: string;
+  facility_type: string | null;
+  license_number: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  postal_code: string | null;
+  contact_number: string | null;
+  total_beds: number;
+  neonatal_icu_available: boolean;
+  status: string;
+  tagline: string | null;
+  established_year: number | null;
+  accreditations: string[] | null;
+  visiting_hours: string | null;
+  emergency_contact_number: string | null;
+  ambulance_available: boolean;
+}
+
+function toDoctorHospital(row: DoctorHospitalRowShape): DoctorHospitalSummary {
+  return {
+    hospitalId: row.hospital_id,
+    name: row.facility_name,
+    facilityType: row.facility_type ?? '',
+    licenseNumber: row.license_number ?? '',
+    address: row.address ?? '',
+    city: row.city ?? '',
+    state: row.state ?? '',
+    postalCode: row.postal_code ?? '',
+    contactNumber: row.contact_number ?? '',
+    totalBeds: row.total_beds,
+    neonatalICUAvailable: row.neonatal_icu_available,
+    status: row.status,
+    tagline: row.tagline ?? '',
+    establishedYear: row.established_year,
+    accreditations: row.accreditations ?? [],
+    visitingHours: row.visiting_hours ?? '',
+    emergencyContactNumber: row.emergency_contact_number ?? '',
+    ambulanceAvailable: row.ambulance_available,
+  };
+}
+
+// Throws (via authedFetch's AuthApiError) on a 404 — a doctor account with no
+// hospital_id set, or one pointing at a hospital_profiles row that doesn't
+// exist. DoctorHospitalPage surfaces that through its existing AsyncStateView
+// error state rather than a fabricated hospital.
+export async function getMyHospital(): Promise<DoctorHospitalSummary> {
+  const body = await get('/doctor/hospital');
+  return toDoctorHospital(body.hospital as DoctorHospitalRowShape);
 }

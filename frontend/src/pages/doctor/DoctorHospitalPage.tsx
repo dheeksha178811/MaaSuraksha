@@ -3,15 +3,36 @@ import { Building2, Phone, MapPin, BedDouble, ShieldCheck } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { mockDoctor, mockHospital } from '@/data/mockData';
+import { mockDoctor } from '@/data/mockData';
+import * as doctorService from '@/services/doctorService';
+import { useAsyncData } from '@/hooks/useAsyncData';
+import { AsyncStateView } from '@/pages/hospital/components/AsyncStateView';
 
 export const DoctorHospitalPage: React.FC = () => {
+  const [hospitalState, reloadHospital] = useAsyncData(() => doctorService.getMyHospital(), []);
+
+  if (hospitalState.status !== 'success') {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="My Hospital" subtitle="Facility details for your primary place of practice." />
+        <AsyncStateView
+          status={hospitalState.status}
+          loadingLabel="Loading hospital details…"
+          errorMessage={hospitalState.status === 'error' ? hospitalState.message : undefined}
+          onRetry={reloadHospital}
+        />
+      </div>
+    );
+  }
+
+  const hospital = hospitalState.data;
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="My Hospital"
         subtitle="Facility details for your primary place of practice."
-        badge={<Badge variant="sandal">{mockHospital.facilityType}</Badge>}
+        badge={<Badge variant="sandal">{hospital.facilityType}</Badge>}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -21,8 +42,8 @@ export const DoctorHospitalPage: React.FC = () => {
               <Building2 className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="font-display text-xl font-bold text-warm-brown">{mockHospital.name}</h3>
-              <p className="text-xs text-warm-muted">{mockHospital.facilityType}</p>
+              <h3 className="font-display text-xl font-bold text-warm-brown">{hospital.name}</h3>
+              <p className="text-xs text-warm-muted">{hospital.facilityType}</p>
             </div>
           </div>
 
@@ -31,28 +52,28 @@ export const DoctorHospitalPage: React.FC = () => {
               <MapPin className="w-4 h-4 text-sandal-600 shrink-0 mt-0.5" />
               <div>
                 <dt className="text-xs text-warm-muted">Address</dt>
-                <dd className="font-medium text-warm-brown">{mockHospital.address}, {mockHospital.city}, {mockHospital.state}</dd>
+                <dd className="font-medium text-warm-brown">{hospital.address}, {hospital.city}, {hospital.state}</dd>
               </div>
             </div>
             <div className="flex items-start gap-2">
               <Phone className="w-4 h-4 text-sandal-600 shrink-0 mt-0.5" />
               <div>
                 <dt className="text-xs text-warm-muted">Contact</dt>
-                <dd className="font-medium text-warm-brown">{mockHospital.contactNumber}</dd>
+                <dd className="font-medium text-warm-brown">{hospital.contactNumber}</dd>
               </div>
             </div>
             <div className="flex items-start gap-2">
               <ShieldCheck className="w-4 h-4 text-sandal-600 shrink-0 mt-0.5" />
               <div>
                 <dt className="text-xs text-warm-muted">License Number</dt>
-                <dd className="font-medium text-warm-brown">{mockHospital.licenseNumber}</dd>
+                <dd className="font-medium text-warm-brown">{hospital.licenseNumber}</dd>
               </div>
             </div>
             <div className="flex items-start gap-2">
               <BedDouble className="w-4 h-4 text-sandal-600 shrink-0 mt-0.5" />
               <div>
                 <dt className="text-xs text-warm-muted">Total Beds</dt>
-                <dd className="font-medium text-warm-brown">{mockHospital.totalBeds}</dd>
+                <dd className="font-medium text-warm-brown">{hospital.totalBeds}</dd>
               </div>
             </div>
           </dl>
@@ -63,8 +84,8 @@ export const DoctorHospitalPage: React.FC = () => {
           <div className="space-y-2 text-sm">
             <div className="flex items-center justify-between p-2.5 rounded-lg bg-warm-ivory border border-sandal-100">
               <span className="text-warm-muted">Neonatal ICU</span>
-              <Badge variant={mockHospital.neonatalICUAvailable ? 'sage' : 'outline'} size="sm">
-                {mockHospital.neonatalICUAvailable ? 'Available' : 'Not Available'}
+              <Badge variant={hospital.neonatalICUAvailable ? 'sage' : 'outline'} size="sm">
+                {hospital.neonatalICUAvailable ? 'Available' : 'Not Available'}
               </Badge>
             </div>
             <div className="flex items-center justify-between p-2.5 rounded-lg bg-warm-ivory border border-sandal-100">
