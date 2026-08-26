@@ -147,3 +147,43 @@ export async function listMyAppointments(doctorId: string): Promise<DoctorAppoin
   );
   return result.rows;
 }
+
+export interface DoctorCareRecommendationRow {
+  recommendation_id: string;
+  patient_id: string;
+  patient_name: string;
+  child_id: string | null;
+  child_name: string | null;
+  doctor_id: string;
+  type: string | null;
+  title: string | null;
+  description: string | null;
+  rec_date: string | null;
+  active: boolean;
+}
+
+/**
+ * A doctor's own care_recommendations rows (migration 002), scoped directly
+ * by care_recommendations.doctor_id — the same column patient_care_records
+ * uses, populated when a recommendation is created against a
+ * patient_care_records row this doctor owns. JOIN (not LEFT JOIN) on
+ * patient_care_records/users is safe here: care_recommendations.
+ * patient_care_record_id is NOT NULL and ON DELETE CASCADE, so a
+ * recommendation row can't outlive its patient_care_records parent.
+ */
+export async function listMyCarePlans(doctorId: string): Promise<DoctorCareRecommendationRow[]> {
+  const result = await pool.query<DoctorCareRecommendationRow>(
+    `SELECT
+       cr.id AS recommendation_id, pcr.id AS patient_id, u.name AS patient_name,
+       pcr.child_id, cp.name AS child_name,
+       cr.doctor_id, cr.type, cr.title, cr.description, cr.rec_date, cr.active
+     FROM care_recommendations cr
+     JOIN patient_care_records pcr ON pcr.id = cr.patient_care_record_id
+     JOIN users u ON u.id = pcr.mother_id
+     LEFT JOIN child_profiles cp ON cp.id = pcr.child_id
+     WHERE cr.doctor_id = $1
+     ORDER BY cr.rec_date DESC NULLS LAST, cr.created_at DESC`,
+    [doctorId]
+  );
+  return result.rows;
+}

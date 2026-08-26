@@ -6,8 +6,9 @@ import { Card } from '@/components/ui/Card';
 import { Select } from '@/components/ui/Select';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { mockDoctor } from '@/data/mockData';
-import { getPatientsForDoctor, getRecommendationsForDoctor } from '@/data/doctorPatientsMockData';
+import * as doctorService from '@/services/doctorService';
+import { useAsyncData } from '@/hooks/useAsyncData';
+import { AsyncStateView } from '@/pages/hospital/components/AsyncStateView';
 import { RecommendationType } from '@/types';
 
 const TYPE_OPTIONS = [
@@ -23,8 +24,10 @@ export const DoctorCarePlansPage: React.FC = () => {
   const navigate = useNavigate();
   const [typeFilter, setTypeFilter] = useState<'ALL' | RecommendationType>('ALL');
 
-  const patients = useMemo(() => getPatientsForDoctor(mockDoctor.id), []);
-  const allRecommendations = useMemo(() => getRecommendationsForDoctor(mockDoctor.id), []);
+  const [patientsState] = useAsyncData(() => doctorService.getMyPatients(), []);
+  const [carePlansState, reloadCarePlans] = useAsyncData(() => doctorService.getMyCarePlans(), []);
+  const patients = patientsState.status === 'success' ? patientsState.data : [];
+  const allRecommendations = carePlansState.status === 'success' ? carePlansState.data : [];
 
   const patientNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -61,7 +64,14 @@ export const DoctorCarePlansPage: React.FC = () => {
         </div>
       </Card>
 
-      {filtered.length === 0 ? (
+      {carePlansState.status !== 'success' ? (
+        <AsyncStateView
+          status={carePlansState.status}
+          loadingLabel="Loading care plans…"
+          errorMessage={carePlansState.status === 'error' ? carePlansState.message : undefined}
+          onRetry={reloadCarePlans}
+        />
+      ) : filtered.length === 0 ? (
         <Card className="bg-warm-ivory border-sandal-100">
           <div className="text-center py-12">
             <ClipboardList className="w-10 h-10 text-sandal-300 mx-auto mb-4" />

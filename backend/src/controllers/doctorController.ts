@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { getPatientByIdForDoctor, listMyAppointments, listMyPatients } from '../services/doctorService';
+import { getPatientByIdForDoctor, listMyAppointments, listMyCarePlans, listMyPatients } from '../services/doctorService';
 import { logger } from '../utils/logger';
 
 export async function getMyPatients(req: Request, res: Response) {
@@ -48,5 +48,20 @@ export async function getMyAppointments(req: Request, res: Response) {
   } catch (error) {
     logger.error('Fetch doctor appointments failed', error);
     res.status(500).json({ success: false, message: 'Unable to fetch appointments.' });
+  }
+}
+
+export async function getMyCarePlans(req: Request, res: Response) {
+  if (!req.user) {
+    res.status(401).json({ success: false, message: 'Authentication token is required.' });
+    return;
+  }
+
+  try {
+    const carePlans = await listMyCarePlans(req.user.id);
+    res.status(200).json({ success: true, carePlans });
+  } catch (error) {
+    logger.error('Fetch doctor care plans failed', error);
+    res.status(500).json({ success: false, message: 'Unable to fetch care plans.' });
   }
 }

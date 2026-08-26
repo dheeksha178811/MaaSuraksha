@@ -13,6 +13,7 @@
 import { API_BASE_URL, AuthApiError, AuthNetworkError, TOKEN_STORAGE_KEY } from '@/services/authApi';
 import {
   AssignedPatient,
+  CareRecommendation,
   ChildProfile,
   DoctorAppointment,
   DoctorAppointmentStatus,
@@ -26,6 +27,7 @@ import {
   PatientRiskLevel,
   PatientStage,
   PatientStatus,
+  RecommendationType,
 } from '@/types';
 import { defaultDoctorSettings } from '@/data/doctorSettingsMockData';
 
@@ -341,4 +343,38 @@ function toDoctorAppointment(row: DoctorAppointmentRowShape): DoctorAppointment 
 export async function getMyAppointments(): Promise<DoctorAppointment[]> {
   const body = await get('/doctor/appointments');
   return ((body.appointments as DoctorAppointmentRowShape[]) ?? []).map(toDoctorAppointment);
+}
+
+// --- Care plans (Recommendations) -----------------------------------------------
+
+interface DoctorCareRecommendationRowShape {
+  recommendation_id: string;
+  patient_id: string;
+  patient_name: string;
+  child_id: string | null;
+  child_name: string | null;
+  doctor_id: string;
+  type: string | null;
+  title: string | null;
+  description: string | null;
+  rec_date: string | null;
+  active: boolean;
+}
+
+function toCareRecommendation(row: DoctorCareRecommendationRowShape): CareRecommendation {
+  return {
+    recommendationId: row.recommendation_id,
+    patientId: row.patient_id,
+    doctorId: row.doctor_id,
+    type: (row.type as RecommendationType) ?? 'GENERAL',
+    title: row.title ?? '',
+    description: row.description ?? '',
+    date: row.rec_date ?? '',
+    active: row.active,
+  };
+}
+
+export async function getMyCarePlans(): Promise<CareRecommendation[]> {
+  const body = await get('/doctor/care-plans');
+  return ((body.carePlans as DoctorCareRecommendationRowShape[]) ?? []).map(toCareRecommendation);
 }
