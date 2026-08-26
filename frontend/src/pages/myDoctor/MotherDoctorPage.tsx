@@ -39,13 +39,14 @@ import {
 } from '@/pages/appointments/motherAppointmentUi';
 import { CareTeamMemberCard } from '@/pages/myHospital/components/CareTeamMemberCard';
 import { DoctorContactOption } from '@/types';
+import * as messageService from '@/services/messageService';
 import { DoctorContactCard } from './components/DoctorContactCard';
 import { MessageDoctorModal } from './components/MessageDoctorModal';
 import { ConsultationLogItem } from './components/ConsultationLogItem';
 
 export const MotherDoctorPage: React.FC = () => {
   const [isMessageModalOpen, setMessageModalOpen] = useState(false);
-  const [toast, setToast] = useState<{ title: string; message: string } | null>(null);
+  const [toast, setToast] = useState<{ title: string; message: string; type?: 'success' | 'error' } | null>(null);
 
   const contactOptions = useMemo(() => getDoctorContactOptions(mockDoctor.id), []);
   const careTeam = useMemo(() => getCareTeamForDoctorHospital(mockHospital.id), []);
@@ -77,11 +78,21 @@ export const MotherDoctorPage: React.FC = () => {
     }
   };
 
-  const handleMessageSent = () => {
-    setToast({
-      title: 'Message sent',
-      message: `Your message has been sent to ${mockDoctor.name}'s care team.`,
-    });
+  const handleMessageSent = async (messageText: string) => {
+    try {
+      const conversation = await messageService.startConversationWithMyDoctor();
+      await messageService.sendMessage(conversation.conversationId, messageText);
+      setToast({
+        title: 'Message sent',
+        message: `Your message has been sent to ${conversation.patientName}'s care team.`,
+      });
+    } catch (error) {
+      setToast({
+        title: 'Message not sent',
+        message: error instanceof Error ? error.message : 'Something went wrong. Please try again.',
+        type: 'error',
+      });
+    }
   };
 
   const CategoryIcon = nextAppointment ? getAppointmentCategoryIcon(nextAppointment.category) : CalendarClock;
@@ -334,7 +345,7 @@ export const MotherDoctorPage: React.FC = () => {
 
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200">
-          <Toast type="success" title={toast.title} message={toast.message} onClose={() => setToast(null)} />
+          <Toast type={toast.type ?? 'success'} title={toast.title} message={toast.message} onClose={() => setToast(null)} />
         </div>
       )}
     </div>

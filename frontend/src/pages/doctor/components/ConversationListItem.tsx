@@ -4,7 +4,6 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/utils/cn';
 import { ConversationWithMeta } from '@/types';
-import { DOCTOR_MESSAGES_NOW_ISO } from '@/data/doctorMessagesMockData';
 import { formatClinicalTimestamp } from '@/pages/doctor/doctorUi';
 import { getConversationStatusBadgeVariant, getConversationStatusLabel } from '@/pages/doctor/doctorMessagingUi';
 
@@ -40,7 +39,7 @@ export const ConversationListItem: React.FC<ConversationListItemProps> = ({
             </span>
             {conversation.lastMessage && (
               <span className="text-[10px] text-warm-muted shrink-0">
-                {formatClinicalTimestamp(conversation.lastMessage.timestamp, DOCTOR_MESSAGES_NOW_ISO)}
+                {formatClinicalTimestamp(conversation.lastMessage.timestamp, new Date().toISOString())}
               </span>
             )}
           </div>

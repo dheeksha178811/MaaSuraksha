@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/Button';
 import { IconButton } from '@/components/ui/IconButton';
 import { cn } from '@/utils/cn';
 import { AssignedPatient, ConversationWithMeta, DoctorMessage } from '@/types';
-import { DOCTOR_MESSAGES_NOW_ISO } from '@/data/doctorMessagesMockData';
 import { formatClinicalTimestamp, getPatientStageSummary } from '@/pages/doctor/doctorUi';
 import { getConversationStatusBadgeVariant, getConversationStatusLabel } from '@/pages/doctor/doctorMessagingUi';
 import { MessageComposer } from './MessageComposer';
@@ -112,7 +111,7 @@ export const ConversationThread: React.FC<ConversationThreadProps> = ({
           return (
             <div key={message.messageId} className={cn('flex flex-col', isDoctor ? 'items-end' : 'items-start')}>
               <span className="text-[10px] text-warm-muted mb-1 px-1">
-                {isDoctor ? 'You' : message.senderName} • {formatClinicalTimestamp(message.timestamp, DOCTOR_MESSAGES_NOW_ISO)}
+                {isDoctor ? 'You' : message.senderName} • {formatClinicalTimestamp(message.timestamp, new Date().toISOString())}
               </span>
               <div
                 className={cn(
