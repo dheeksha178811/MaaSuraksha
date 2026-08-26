@@ -4,6 +4,7 @@ import { PublicLayout } from '@/layouts/PublicLayout';
 import { AppLayout } from '@/layouts/AppLayout';
 import { LandingPage } from '@/pages/landing/LandingPage';
 import { LoginPage } from '@/pages/auth/LoginPage';
+import { RegisterPage } from '@/pages/auth/RegisterPage';
 import { MotherDashboardPreview } from '@/pages/dashboard/MotherDashboardPreview';
 import { PregnancyPage } from '@/pages/pregnancy/PregnancyPage';
 import { ReportsPage } from '@/pages/reports/ReportsPage';
@@ -62,6 +63,7 @@ export const AppRoutes: React.FC = () => {
       <Route element={<PublicLayout />}>
         <Route path="/" element={<LandingPage />} />
         <Route path="/auth/login" element={<LoginPage />} />
+        <Route path="/auth/register" element={<RegisterPage />} />
       </Route>
 
       {/* Main Care Shell / Protected Style Routes */}

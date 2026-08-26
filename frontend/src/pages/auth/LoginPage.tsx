@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   HeartHandshake,
   Stethoscope,
@@ -194,6 +194,13 @@ export const LoginPage: React.FC = () => {
               >
                 {isLoading ? 'Entering Workspace...' : `Enter ${selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)} Portal`}
               </Button>
+
+              <p className="text-center text-xs text-warm-muted">
+                New to MaaSuraksha?{' '}
+                <Link to="/auth/register" className="font-semibold text-sandal-700 hover:underline">
+                  Create an account
+                </Link>
+              </p>
             </form>
           </Card>
         </div>
