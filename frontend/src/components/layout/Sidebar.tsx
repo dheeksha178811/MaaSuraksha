@@ -5,17 +5,20 @@ import { cn } from '@/utils/cn';
 import { getNavConfigForRole } from '@/routes/navigationItems';
 import { Badge } from '@/components/ui/Badge';
 import { useMockAuth } from '@/hooks/useMockAuth';
+import { SidebarBadgeMap } from '@/hooks/useSidebarBadges';
 
 export interface SidebarProps {
   isCollapsed: boolean;
   onToggleCollapse: () => void;
   className?: string;
+  badges?: SidebarBadgeMap;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   isCollapsed,
   onToggleCollapse,
   className,
+  badges = {},
 }) => {
   const location = useLocation();
   const { role } = useMockAuth();
@@ -81,6 +84,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.href;
+          const badgeValue = badges[item.href] ?? item.badge;
 
           return (
             <NavLink
@@ -109,13 +113,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <span className="truncate flex-1">{item.title}</span>
               )}
 
-              {!isCollapsed && item.badge && (
+              {!isCollapsed && badgeValue && (
                 <Badge
-                  variant={item.badge === 'Due' ? 'sandal' : 'warm'}
+                  variant={badgeValue === 'Due' ? 'sandal' : 'warm'}
                   size="sm"
                   className="ml-auto"
                 >
-                  {item.badge}
+                  {badgeValue}
                 </Badge>
               )}
 

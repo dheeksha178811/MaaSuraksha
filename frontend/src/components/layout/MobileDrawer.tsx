@@ -6,13 +6,15 @@ import { getNavConfigForRole } from '@/routes/navigationItems';
 import { Badge } from '@/components/ui/Badge';
 import { IconButton } from '@/components/ui/IconButton';
 import { useMockAuth } from '@/hooks/useMockAuth';
+import { SidebarBadgeMap } from '@/hooks/useSidebarBadges';
 
 export interface MobileDrawerProps {
   isOpen: boolean;
   onClose: () => void;
+  badges?: SidebarBadgeMap;
 }
 
-export const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) => {
+export const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose, badges = {} }) => {
   const location = useLocation();
   const { role } = useMockAuth();
   const {
@@ -72,6 +74,7 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) =
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.href;
+            const badgeValue = badges[item.href] ?? item.badge;
 
             return (
               <NavLink
@@ -91,9 +94,9 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) =
                   )}
                 />
                 <span className="truncate flex-1">{item.title}</span>
-                {item.badge && (
+                {badgeValue && (
                   <Badge variant="sandal" size="sm">
-                    {item.badge}
+                    {badgeValue}
                   </Badge>
                 )}
               </NavLink>

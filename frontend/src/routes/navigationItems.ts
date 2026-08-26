@@ -51,7 +51,6 @@ export const MOTHER_NAV_ITEMS: NavItem[] = [
     title: 'Appointments',
     href: '/mother/appointments',
     icon: CalendarCheck,
-    badge: '1',
     isPlaceholder: false,
   },
   {
@@ -76,7 +75,6 @@ export const MOTHER_NAV_ITEMS: NavItem[] = [
     title: 'Vaccinations',
     href: '/mother/vaccinations',
     icon: Syringe,
-    badge: 'Due',
     isPlaceholder: false,
   },
   {

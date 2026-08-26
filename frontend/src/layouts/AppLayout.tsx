@@ -6,10 +6,15 @@ import { MobileDrawer } from '@/components/layout/MobileDrawer';
 import { MaaSurakshaAssistant } from '@/components/assistant';
 import { useSidebar } from '@/hooks/useSidebar';
 import { useMockAuth } from '@/hooks/useMockAuth';
+import { useSidebarBadges } from '@/hooks/useSidebarBadges';
 
 export const AppLayout: React.FC = () => {
   const { isCollapsed, toggleCollapse, isMobileOpen, openMobile, closeMobile } = useSidebar();
   const { role, loginAsRole } = useMockAuth();
+  // Computed once here and passed to both nav renderers below, so Sidebar
+  // and MobileDrawer (both always mounted, just CSS-hidden at different
+  // breakpoints) never each fetch independently.
+  const badges = useSidebarBadges(role);
 
   return (
     <div className="min-h-screen bg-warm-ivory flex">
@@ -17,12 +22,14 @@ export const AppLayout: React.FC = () => {
       <Sidebar
         isCollapsed={isCollapsed}
         onToggleCollapse={toggleCollapse}
+        badges={badges}
       />
 
       {/* Mobile Drawer */}
       <MobileDrawer
         isOpen={isMobileOpen}
         onClose={closeMobile}
+        badges={badges}
       />
 
       {/* Main App Container */}

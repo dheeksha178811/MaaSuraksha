@@ -47,6 +47,19 @@ async function authedFetch(path: string, options: RequestInit = {}): Promise<Rec
 const get = (path: string) => authedFetch(path);
 const post = (path: string, body?: unknown) => authedFetch(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined });
 
+// Lets callers outside this module (currently: useSidebarBadges) react
+// immediately when a conversation's read/unread state may have changed —
+// sending a message, or opening a conversation (which marks the other
+// party's messages read server-side) — without polling or a page reload.
+const activityListeners = new Set<() => void>();
+export function subscribeToMessageActivity(listener: () => void): () => void {
+  activityListeners.add(listener);
+  return () => activityListeners.delete(listener);
+}
+function notifyMessageActivity() {
+  activityListeners.forEach((listener) => listener());
+}
+
 interface ConversationRowShape {
   conversation_id: string;
   doctor_id: string;
@@ -120,6 +133,7 @@ export async function getConversation(
   conversationId: string
 ): Promise<{ conversation: ConversationWithMeta; messages: DoctorMessage[] }> {
   const body = await get(`/messages/conversations/${conversationId}`);
+  notifyMessageActivity();
   return {
     conversation: toConversation(body.conversation as ConversationRowShape),
     messages: ((body.messages as MessageRowShape[]) ?? []).map(toMessage),
@@ -128,6 +142,7 @@ export async function getConversation(
 
 export async function sendMessage(conversationId: string, text: string): Promise<DoctorMessage> {
   const body = await post(`/messages/conversations/${conversationId}/messages`, { text });
+  notifyMessageActivity();
   return toMessage(body.message as MessageRowShape);
 }
 
