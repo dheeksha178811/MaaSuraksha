@@ -1,13 +1,14 @@
 // ---------------------------------------------------------------------------
-// Real backend client for the doctor-domain APIs — Phase 6 Parts 5-7.
+// Real backend client for the doctor-domain APIs — Phase 6 Parts 5-9.
 //
 // Doctor self-service (profile/settings) goes through the generic,
 // role-aware endpoints every role shares (GET/PATCH /auth/me, GET/PATCH
-// /auth/me/settings). Patient roster/detail and appointments go through the
-// dedicated /api/doctor/* route group (Parts 6-7), reusing the appointments
-// table Mother's own appointment API already writes to. Messages,
-// notifications, care plans, and reports still have no backend API and stay
-// on mock data — see PROJECT_STATE.md / this phase's report.
+// /auth/me/settings). Patient roster/detail, appointments, care plans, and
+// consultation notes go through the dedicated /api/doctor/* route group
+// (Parts 6-9), reusing the appointments/care_recommendations/
+// consultation_notes tables Mother's/this domain's own write paths already
+// populate. Messages, notifications, and reports still have no backend API
+// and stay on mock data — see PROJECT_STATE.md / this phase's report.
 // ---------------------------------------------------------------------------
 
 import { API_BASE_URL, AuthApiError, AuthNetworkError, TOKEN_STORAGE_KEY } from '@/services/authApi';
@@ -15,6 +16,7 @@ import {
   AssignedPatient,
   CareRecommendation,
   ChildProfile,
+  ConsultationNote,
   DoctorAppointment,
   DoctorAppointmentStatus,
   DoctorAppointmentType,
@@ -377,4 +379,34 @@ function toCareRecommendation(row: DoctorCareRecommendationRowShape): CareRecomm
 export async function getMyCarePlans(): Promise<CareRecommendation[]> {
   const body = await get('/doctor/care-plans');
   return ((body.carePlans as DoctorCareRecommendationRowShape[]) ?? []).map(toCareRecommendation);
+}
+
+// --- Consultation notes ----------------------------------------------------------
+
+interface DoctorConsultationNoteRowShape {
+  note_id: string;
+  patient_id: string;
+  doctor_id: string;
+  appointment_id: string | null;
+  note_date: string | null;
+  title: string | null;
+  note: string | null;
+  visible_to_patient: boolean;
+  created_at: string;
+}
+
+function toConsultationNote(row: DoctorConsultationNoteRowShape): ConsultationNote {
+  return {
+    noteId: row.note_id,
+    patientId: row.patient_id,
+    doctorId: row.doctor_id,
+    date: row.note_date ?? row.created_at,
+    title: row.title ?? '',
+    note: row.note ?? '',
+  };
+}
+
+export async function getPatientConsultationNotes(patientId: string): Promise<ConsultationNote[]> {
+  const body = await get(`/doctor/patients/${patientId}/consultation-notes`);
+  return ((body.notes as DoctorConsultationNoteRowShape[]) ?? []).map(toConsultationNote);
 }

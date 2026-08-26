@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -24,7 +24,6 @@ import { cn } from '@/utils/cn';
 import { mockDoctor, mockHospital, mockVaccinations, mockChild } from '@/data/mockData';
 import {
   getAppointmentsForPatient,
-  getConsultationNotesForPatient,
   getMedicationsForPatient,
   getRecommendationsForPatient,
   getReportsForPatient,
@@ -70,9 +69,17 @@ export const PatientCareWorkspacePage: React.FC = () => {
   const [appointments, setAppointments] = useState<DoctorAppointment[]>(() =>
     patientId ? getAppointmentsForPatient(patientId) : []
   );
-  const [notes, setNotes] = useState<ConsultationNote[]>(() =>
-    patientId ? getConsultationNotesForPatient(patientId) : []
+  const [notesState, reloadNotes] = useAsyncData(
+    () =>
+      patientId
+        ? doctorService.getPatientConsultationNotes(patientId)
+        : Promise.reject(new Error('No patient id in the URL.')),
+    [patientId]
   );
+  const [notes, setNotes] = useState<ConsultationNote[]>([]);
+  useEffect(() => {
+    if (notesState.status === 'success') setNotes(notesState.data);
+  }, [notesState]);
 
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -345,7 +352,14 @@ export const PatientCareWorkspacePage: React.FC = () => {
               </div>
               <Button size="sm" variant="ghost" onClick={() => setNoteOpen(true)}>Add Note</Button>
             </div>
-            {notes.length === 0 ? (
+            {notesState.status !== 'success' ? (
+              <AsyncStateView
+                status={notesState.status}
+                loadingLabel="Loading consultation notes…"
+                errorMessage={notesState.status === 'error' ? notesState.message : undefined}
+                onRetry={reloadNotes}
+              />
+            ) : notes.length === 0 ? (
               <p className="text-sm text-warm-muted">No consultation notes recorded yet.</p>
             ) : (
               <div className="space-y-3">

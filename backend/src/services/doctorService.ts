@@ -187,3 +187,46 @@ export async function listMyCarePlans(doctorId: string): Promise<DoctorCareRecom
   );
   return result.rows;
 }
+
+export interface DoctorConsultationNoteRow {
+  note_id: string;
+  patient_id: string;
+  doctor_id: string;
+  appointment_id: string | null;
+  note_date: string | null;
+  title: string | null;
+  note: string | null;
+  visible_to_patient: boolean;
+  created_at: string;
+}
+
+/**
+ * A patient's consultation_notes (migration 002), gated by the same
+ * ownership check getPatientByIdForDoctor uses: patientId (a
+ * patient_care_records id) must resolve to a currently-active assignment for
+ * this doctor before any notes are read. Returns null (not []) when that
+ * check fails, so the controller can 404 the same way getPatientByIdForDoctor
+ * does instead of silently returning an empty notes list for someone else's
+ * patient.
+ */
+export async function listConsultationNotesForPatient(
+  doctorId: string,
+  patientId: string
+): Promise<DoctorConsultationNoteRow[] | null> {
+  const ownership = await pool.query(
+    `SELECT 1 FROM patient_care_records WHERE id = $1 AND doctor_id = $2 AND is_active = true`,
+    [patientId, doctorId]
+  );
+  if (ownership.rowCount === 0) return null;
+
+  const result = await pool.query<DoctorConsultationNoteRow>(
+    `SELECT
+       cn.id AS note_id, cn.patient_care_record_id AS patient_id, cn.doctor_id,
+       cn.appointment_id, cn.note_date, cn.title, cn.note, cn.visible_to_patient, cn.created_at
+     FROM consultation_notes cn
+     WHERE cn.patient_care_record_id = $1
+     ORDER BY cn.note_date DESC NULLS LAST, cn.created_at DESC`,
+    [patientId]
+  );
+  return result.rows;
+}
