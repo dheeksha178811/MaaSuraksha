@@ -15,8 +15,19 @@
 // in-memory-store pattern as `hospitalService.ts` so acknowledging an alert
 // or updating a high-risk case's status persists for the session exactly
 // like a real API call would.
+//
+// getAdminSettings/updateAdminSettings/getAdminProfile/updateAdminProfile
+// now ARE real fetch calls, against /api/admin/settings and
+// /api/admin/profile (admin_settings / admin_profiles). Every other export
+// below — facilities, program overview, maternal analytics, immunization,
+// high-risk monitoring, alerts, dashboard, reports — is still the
+// in-memory mock store, unaffected by this change. getAdminProfile/
+// updateAdminProfile have no frontend consumer yet: /admin/profile still
+// renders AdminPlaceholderPage ("Coming in Module 7") — there is no real
+// profile form in this app to wire them into.
 // ---------------------------------------------------------------------------
 
+import { API_BASE_URL, AuthApiError, AuthNetworkError, TOKEN_STORAGE_KEY } from '@/services/authApi';
 import {
   ADMIN_NOW_ISO,
   adminAlerts,
@@ -44,6 +55,44 @@ import {
   PatientRiskLevel,
   ProgramOverviewSummary,
 } from '@/types';
+
+// --- Real backend client (profile/settings only — see header note) ---------
+
+export class NotAuthenticatedError extends AuthApiError {}
+
+function getToken(): string {
+  const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+  if (!token) {
+    throw new NotAuthenticatedError('Sign in with your real account to view this data.');
+  }
+  return token;
+}
+
+async function authedFetch(path: string, options: RequestInit = {}): Promise<Record<string, unknown>> {
+  const token = getToken();
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+        Authorization: `Bearer ${token}`,
+        ...options.headers,
+      },
+    });
+  } catch {
+    throw new AuthNetworkError('Unable to reach the MaaSuraksha server. Please make sure the backend is running.');
+  }
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const message = typeof body.message === 'string' ? body.message : `Request failed with status ${res.status}.`;
+    throw new AuthApiError(message);
+  }
+  return body;
+}
+
+const get = (path: string) => authedFetch(path);
+const patchRequest = (path: string, body?: unknown) => authedFetch(path, { method: 'PATCH', body: body ? JSON.stringify(body) : undefined });
 
 const LATENCY_MS = 300;
 const simulateLatency = <T,>(value: T): Promise<T> =>
@@ -351,13 +400,90 @@ export async function getAdminReports(request: AdminReportRequest): Promise<Admi
   return simulateLatency(report);
 }
 
+// --- Profile ---------------------------------------------------------------
+// No AdminProfilePage exists yet — /admin/profile still renders
+// AdminPlaceholderPage ("Coming in Module 7") — so nothing in this app calls
+// these two yet. They're wired to the real backend so a future profile page
+// only needs to call them, not build the API client too.
+
+export interface AdminProfileView {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  title?: string;
+  jurisdictionLevel?: string;
+  createdAt: string;
+}
+
+interface AdminProfileRowShape {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  title: string | null;
+  jurisdiction_level: string | null;
+  created_at: string;
+}
+
+function toAdminProfile(row: AdminProfileRowShape): AdminProfileView {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    phone: row.phone ?? undefined,
+    title: row.title ?? undefined,
+    jurisdictionLevel: row.jurisdiction_level ?? undefined,
+    createdAt: row.created_at,
+  };
+}
+
+export async function getAdminProfile(): Promise<AdminProfileView> {
+  const body = await get('/admin/profile');
+  return toAdminProfile(body.profile as AdminProfileRowShape);
+}
+
+// Only title/jurisdictionLevel are self-editable — the same whitelist
+// updateProfileForRole('admin', ...) enforces at the SQL level.
+export type AdminProfileUpdate = Partial<Pick<AdminProfileView, 'title' | 'jurisdictionLevel'>>;
+
+export async function updateAdminProfile(patch: AdminProfileUpdate): Promise<AdminProfileView> {
+  const body = await patchRequest('/admin/profile', patch);
+  return toAdminProfile(body.profile as AdminProfileRowShape);
+}
+
 // --- Settings ------------------------------------------------------------
 
+interface AdminSettingsRowShape {
+  admin_id: string;
+  notifications: Partial<AdminSettings['notifications']> | null;
+  program: Partial<AdminSettings['program']> | null;
+  privacy: Partial<AdminSettings['privacy']> | null;
+}
+
+// An admin account with no settings row yet is normal (no *_settings row is
+// created at registration — see settingsService.ts) — every missing section
+// falls back to this app's existing mock defaults, not an invented value.
+// Also updates the local `_settings` cache, matching the pattern used for
+// hospitalService.ts's equivalent (kept for consistency even though no other
+// function in this file currently reads `_settings`).
+function mergeAdminSettings(row: AdminSettingsRowShape | null): AdminSettings {
+  return {
+    adminId: row?.admin_id ?? defaultAdminSettings.adminId,
+    notifications: { ...defaultAdminSettings.notifications, ...(row?.notifications ?? {}) },
+    program: { ...defaultAdminSettings.program, ...(row?.program ?? {}) },
+    privacy: { ...defaultAdminSettings.privacy, ...(row?.privacy ?? {}) },
+  };
+}
+
 export async function getAdminSettings(): Promise<AdminSettings> {
-  return simulateLatency(clone(_settings));
+  const body = await get('/admin/settings');
+  _settings = mergeAdminSettings(body.settings as AdminSettingsRowShape | null);
+  return clone(_settings);
 }
 
 export async function updateAdminSettings(patch: Partial<AdminSettings>): Promise<AdminSettings> {
-  _settings = { ..._settings, ...patch };
-  return simulateLatency(clone(_settings));
+  const body = await patchRequest('/admin/settings', patch);
+  _settings = mergeAdminSettings(body.settings as AdminSettingsRowShape | null);
+  return clone(_settings);
 }
