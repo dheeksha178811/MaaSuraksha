@@ -26,7 +26,6 @@ import {
   getAppointmentsForPatient,
   getMedicationsForPatient,
   getRecommendationsForPatient,
-  getReportsForPatient,
   DOCTOR_TODAY_ISO,
 } from '@/data/doctorPatientsMockData';
 import { REPORT_CATEGORIES } from '@/data/reportsMockData';
@@ -62,7 +61,6 @@ export const PatientCareWorkspacePage: React.FC = () => {
   const patient = patientState.status === 'success' ? patientState.data : undefined;
 
   const [activeTab, setActiveTab] = useState<TabId>('overview');
-  const [reports, setReports] = useState<Report[]>(() => (patientId ? getReportsForPatient(patientId) : []));
   const [recommendations, setRecommendations] = useState<CareRecommendation[]>(() =>
     patientId ? getRecommendationsForPatient(patientId) : []
   );
@@ -80,6 +78,18 @@ export const PatientCareWorkspacePage: React.FC = () => {
   useEffect(() => {
     if (notesState.status === 'success') setNotes(notesState.data);
   }, [notesState]);
+
+  // Real reports for this one patient — doctorService.getMyReports() lists
+  // every report across this doctor's whole roster (same real /doctor/reports
+  // endpoint DoctorReportsPage.tsx uses), filtered down to this patient here
+  // rather than adding a second, near-duplicate backend endpoint for it.
+  const [reportsState, reloadReports] = useAsyncData(() => doctorService.getMyReports(), []);
+  const [reports, setReports] = useState<Report[]>([]);
+  useEffect(() => {
+    if (reportsState.status === 'success' && patientId) {
+      setReports(reportsState.data.filter((r) => r.patientId === patientId));
+    }
+  }, [reportsState, patientId]);
 
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -143,21 +153,9 @@ export const PatientCareWorkspacePage: React.FC = () => {
     { id: 'appointments', label: 'Appointments' },
   ];
 
-  const handleUploadReport = (data: { name: string; category: Report['category']; fileName: string }) => {
-    const newReport: Report = {
-      id: `R_${patient.patientId}_${Date.now()}`,
-      name: data.name,
-      category: data.category,
-      date: DOCTOR_TODAY_ISO,
-      doctor: mockDoctor.name,
-      hospital: mockHospital.name,
-      status: 'COMPLETED',
-      description: `Uploaded by ${mockDoctor.name} • ${data.fileName}`,
-      fileSize: '1.0 MB',
-      fileType: 'PDF',
-      patientId: patient.patientId,
-    };
-    setReports((prev) => [newReport, ...prev]);
+  const handleUploadReport = async (data: { name: string; category: Report['category']; file: File }) => {
+    const uploaded = await doctorService.uploadReport(patient.patientId, data);
+    setReports((prev) => [uploaded, ...prev]);
     setUploadOpen(false);
     alert(`Report uploaded for ${patient.name}. It will also appear in the mother's Reports & Documents.`);
   };
@@ -527,7 +525,14 @@ export const PatientCareWorkspacePage: React.FC = () => {
               Upload Report
             </Button>
           </div>
-          {reports.length === 0 ? (
+          {reportsState.status !== 'success' ? (
+            <AsyncStateView
+              status={reportsState.status}
+              loadingLabel="Loading reports…"
+              errorMessage={reportsState.status === 'error' ? reportsState.message : undefined}
+              onRetry={reloadReports}
+            />
+          ) : reports.length === 0 ? (
             <p className="text-sm text-warm-muted py-4 text-center">No reports on file for this patient yet.</p>
           ) : (
             <div className="space-y-3">

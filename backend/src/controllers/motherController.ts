@@ -5,6 +5,7 @@ import { listMyVaccinations, toggleMyVaccinationReminder } from '../services/vac
 import { listMyDailyGoals, incrementMyDailyGoal, decrementMyDailyGoal } from '../services/dailyGoalService';
 import { listMyNutritionReminders, toggleMyNutritionReminder } from '../services/nutritionReminderService';
 import { listMyAppointments, requestMyAppointment, cancelMyAppointment, rescheduleMyAppointment } from '../services/appointmentService';
+import { listDocumentsForMother } from '../services/documentService';
 import { AuthError } from '../services/authService';
 import { logger } from '../utils/logger';
 
@@ -309,5 +310,24 @@ export async function rescheduleAppointment(req: Request, res: Response) {
     }
     logger.error('Reschedule appointment failed', error);
     res.status(500).json({ success: false, message: 'Unable to reschedule appointment.' });
+  }
+}
+
+export async function getMyDocuments(req: Request, res: Response) {
+  if (!req.user) {
+    res.status(401).json({ success: false, message: 'Authentication token is required.' });
+    return;
+  }
+
+  try {
+    const documents = await listDocumentsForMother(req.user.id);
+    res.status(200).json({ success: true, documents });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      res.status(error.status).json({ success: false, message: error.message });
+      return;
+    }
+    logger.error('Fetch documents failed', error);
+    res.status(500).json({ success: false, message: 'Unable to fetch documents.' });
   }
 }

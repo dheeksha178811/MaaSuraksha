@@ -20,7 +20,7 @@ const REPORT_CATEGORY_OPTIONS: { value: ReportCategory; label: string }[] = [
 ];
 
 export interface UploadReportModalProps extends BaseModalProps {
-  onUpload: (data: { name: string; category: ReportCategory; fileName: string }) => void;
+  onUpload: (data: { name: string; category: ReportCategory; file: File }) => Promise<void>;
 }
 
 export const UploadReportModal: React.FC<UploadReportModalProps> = ({
@@ -32,16 +32,24 @@ export const UploadReportModal: React.FC<UploadReportModalProps> = ({
   const [name, setName] = useState('');
   const [category, setCategory] = useState<ReportCategory>('ULTRASOUND');
   const [file, setFile] = useState<File | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!name || !file) {
       alert('Please provide a report title and select a file.');
       return;
     }
-    onUpload({ name, category, fileName: file.name });
-    setName('');
-    setFile(null);
-    setCategory('ULTRASOUND');
+    setSubmitting(true);
+    try {
+      await onUpload({ name, category, file });
+      setName('');
+      setFile(null);
+      setCategory('ULTRASOUND');
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Unable to upload report. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -65,7 +73,7 @@ export const UploadReportModal: React.FC<UploadReportModalProps> = ({
           </label>
           <label className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-dashed border-sandal-300 hover:bg-sandal-50 transition-colors cursor-pointer text-sm text-warm-muted">
             <Upload className="w-4 h-4 text-sandal-600 shrink-0" />
-            <span className="truncate">{file ? file.name : 'Choose a file to attach (mock upload)'}</span>
+            <span className="truncate">{file ? file.name : 'Choose a file to attach'}</span>
             <input
               type="file"
               className="hidden"
@@ -74,8 +82,10 @@ export const UploadReportModal: React.FC<UploadReportModalProps> = ({
           </label>
         </div>
         <div className="flex gap-3 justify-end pt-2">
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSubmit}>Upload Report</Button>
+          <Button variant="outline" onClick={onClose} disabled={submitting}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={submitting}>
+            {submitting ? 'Uploading…' : 'Upload Report'}
+          </Button>
         </div>
       </div>
     </Modal>

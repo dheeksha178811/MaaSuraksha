@@ -15,6 +15,7 @@ import {
   requestAppointment,
   cancelAppointment,
   rescheduleAppointment,
+  getMyDocuments,
 } from '../controllers/motherController';
 import { validateLogGrowthMeasurement } from '../validators/growthValidators';
 import { validateMarkMilestoneAchieved } from '../validators/milestoneValidators';
@@ -46,5 +47,6 @@ router.get('/appointments', authenticate, requireRole('mother'), getMyAppointmen
 router.post('/appointments', authenticate, requireRole('mother'), validateRequestAppointment, requestAppointment);
 router.patch('/appointments/:appointmentId/cancel', authenticate, requireRole('mother'), validateCancelAppointment, cancelAppointment);
 router.patch('/appointments/:appointmentId/reschedule', authenticate, requireRole('mother'), validateRescheduleAppointment, rescheduleAppointment);
+router.get('/documents', authenticate, requireRole('mother'), getMyDocuments);
 
 export default router;

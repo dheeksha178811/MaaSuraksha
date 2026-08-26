@@ -6,7 +6,10 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Badge } from '@/components/ui/Badge';
-import { mockReports, REPORT_CATEGORIES, getReportSummary, filterReportsByCategory, searchReports } from '@/data/reportsMockData';
+import { REPORT_CATEGORIES, getReportSummary, filterReportsByCategory, searchReports } from '@/data/reportsMockData';
+import * as motherService from '@/services/motherService';
+import { useAsyncData } from '@/hooks/useAsyncData';
+import { AsyncStateView } from '@/pages/hospital/components/AsyncStateView';
 import { Report } from '@/types';
 import { ReportDetailsModal } from './ReportDetailsModal';
 
@@ -15,14 +18,17 @@ export const ReportsPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
 
-  const summary = useMemo(() => getReportSummary(mockReports), []);
+  const [reportsState, reloadReports] = useAsyncData(() => motherService.getDocuments(), []);
+  const reports = reportsState.status === 'success' ? reportsState.data : [];
+
+  const summary = useMemo(() => getReportSummary(reports), [reports]);
 
   const filteredReports = useMemo(() => {
-    let results = mockReports;
+    let results = reports;
     results = filterReportsByCategory(results, selectedCategory);
     results = searchReports(results, searchQuery);
     return results;
-  }, [searchQuery, selectedCategory]);
+  }, [reports, searchQuery, selectedCategory]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -146,7 +152,14 @@ export const ReportsPage: React.FC = () => {
       </Card>
 
       {/* Reports List or Empty State */}
-      {filteredReports.length === 0 ? (
+      {reportsState.status !== 'success' ? (
+        <AsyncStateView
+          status={reportsState.status}
+          loadingLabel="Loading your reports…"
+          errorMessage={reportsState.status === 'error' ? reportsState.message : undefined}
+          onRetry={reloadReports}
+        />
+      ) : filteredReports.length === 0 ? (
         <Card className="bg-warm-ivory border-sandal-100">
           <div className="text-center py-12">
             <div className="text-5xl mb-4">📭</div>

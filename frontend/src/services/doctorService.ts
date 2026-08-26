@@ -8,8 +8,12 @@
 // through the dedicated /api/doctor/* route group (Parts 6-12), reusing the
 // appointments/care_recommendations/consultation_notes/hospital_profiles/
 // documents tables Mother's/this domain's own write paths already populate.
-// Report upload, messages, and notifications still have no backend API and
-// stay on mock data — see PROJECT_STATE.md / this phase's report.
+// Report upload (uploadReport, below) is a real POST against the documents
+// table too, including the file's bytes on local disk — see
+// documentService.ts's own header comment for exactly what "stored" means
+// here. Care recommendations, follow-up scheduling, consultation note
+// creation, and notifications still have no backend API and stay on mock
+// data — see PROJECT_STATE.md / this phase's report.
 // ---------------------------------------------------------------------------
 
 import { API_BASE_URL, AuthApiError, AuthNetworkError, TOKEN_STORAGE_KEY } from '@/services/authApi';
@@ -72,6 +76,30 @@ async function authedFetch(path: string, options: RequestInit = {}): Promise<Rec
 
 const get = (path: string) => authedFetch(path);
 const patch = (path: string, body?: unknown) => authedFetch(path, { method: 'PATCH', body: body ? JSON.stringify(body) : undefined });
+
+// Separate from authedFetch: a multipart body must NOT get the
+// 'Content-Type: application/json' header authedFetch always adds when a
+// body is present — the browser needs to set its own multipart boundary.
+// Only used by uploadReport below.
+async function authedUpload(path: string, formData: FormData): Promise<Record<string, unknown>> {
+  const token = getToken();
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}${path}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+  } catch {
+    throw new AuthNetworkError('Unable to reach the MaaSuraksha server. Please make sure the backend is running.');
+  }
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const message = typeof body.message === 'string' ? body.message : `Request failed with status ${res.status}.`;
+    throw new AuthApiError(message);
+  }
+  return body;
+}
 
 // --- Profile -----------------------------------------------------------------
 
@@ -527,9 +555,30 @@ function toReport(row: DoctorReportRowShape): Report {
   };
 }
 
-// No upload producer exists yet (Part 12 is read-only), so an empty array
-// here is the correct, expected state — not treated as an error.
+// An empty array is the correct, expected state for a doctor with no
+// uploaded/assigned reports yet — not treated as an error.
 export async function getMyReports(): Promise<Report[]> {
   const body = await get('/doctor/reports');
   return ((body.reports as DoctorReportRowShape[]) ?? []).map(toReport);
+}
+
+export interface UploadReportInput {
+  name: string;
+  category: ReportCategory;
+  file: File;
+}
+
+// patientId here is a patient_care_records id (same as getPatientDetail's
+// param) — the backend re-verifies this doctor actually owns that record
+// before accepting the upload; this call never carries a doctorId or
+// motherId of its own. Returns the same Report shape getMyReports() does,
+// straight from the just-inserted row, so the caller can show it
+// immediately without a second fetch.
+export async function uploadReport(patientId: string, input: UploadReportInput): Promise<Report> {
+  const formData = new FormData();
+  formData.append('name', input.name);
+  formData.append('category', input.category);
+  formData.append('file', input.file);
+  const body = await authedUpload(`/doctor/patients/${patientId}/reports`, formData);
+  return toReport(body.report as DoctorReportRowShape);
 }

@@ -32,6 +32,9 @@ import {
   NotificationPreferences,
   PrivacyPreferences,
   ReminderPreferences,
+  Report,
+  ReportCategory,
+  ReportStatus,
   SettingsLanguage,
   VaccineStatus,
 } from '@/types';
@@ -554,4 +557,44 @@ export async function rescheduleAppointment(
     resolveRecipientContext(),
   ]);
   return toAppointment(body.appointment as AppointmentRowShape, ctx);
+}
+
+// --- Documents (Reports & Documents page) -----------------------------------
+
+interface DocumentRowShape {
+  id: string;
+  name: string;
+  category: string | null;
+  doc_date: string | null;
+  status: string | null;
+  description: string | null;
+  file_size: string | null;
+  file_type: string | null;
+  file_url: string | null;
+  doctor_name: string | null;
+  hospital_name: string | null;
+}
+
+function toReport(row: DocumentRowShape): Report {
+  return {
+    id: row.id,
+    name: row.name,
+    category: (row.category as ReportCategory) ?? 'OTHER',
+    date: row.doc_date ?? '',
+    doctor: row.doctor_name ?? '',
+    hospital: row.hospital_name ?? '',
+    status: (row.status as ReportStatus) ?? 'PENDING',
+    description: row.description ?? undefined,
+    fileSize: row.file_size ?? undefined,
+    fileType: row.file_type ?? undefined,
+  };
+}
+
+// Every document a doctor has uploaded for this mother (documents.mother_id
+// scoped server-side from her own JWT) — no mock fallback and no locally
+// inserted rows: a report only ever appears here once it is genuinely in
+// the documents table.
+export async function getDocuments(): Promise<Report[]> {
+  const body = await get('/mother/documents');
+  return ((body.documents as DocumentRowShape[]) ?? []).map(toReport);
 }

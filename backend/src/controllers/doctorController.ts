@@ -1,3 +1,4 @@
+import fs from 'fs';
 import { Request, Response } from 'express';
 import {
   getHospitalForDoctor,
@@ -8,6 +9,8 @@ import {
   listMyPatients,
   listMyReports,
 } from '../services/doctorService';
+import { uploadDocumentForPatient } from '../services/documentService';
+import { AuthError } from '../services/authService';
 import { logger } from '../utils/logger';
 
 export async function getMyPatients(req: Request, res: Response) {
@@ -124,5 +127,37 @@ export async function getMyReports(req: Request, res: Response) {
   } catch (error) {
     logger.error('Fetch doctor reports failed', error);
     res.status(500).json({ success: false, message: 'Unable to fetch reports.' });
+  }
+}
+
+export async function uploadPatientReport(req: Request, res: Response) {
+  if (!req.user) {
+    res.status(401).json({ success: false, message: 'Authentication token is required.' });
+    return;
+  }
+
+  try {
+    const report = await uploadDocumentForPatient(req.user.id, req.params.patientId, {
+      name: req.body.name,
+      category: req.body.category,
+      file: req.file as Express.Multer.File,
+    });
+    res.status(201).json({ success: true, report });
+  } catch (error) {
+    // Every failure path here happens before any documents row is inserted
+    // (the ownership check, or an unexpected DB error), so multer's
+    // already-written file is guaranteed orphaned — same cleanup
+    // documentValidators.ts does for its own rejections.
+    if (req.file) {
+      fs.unlink(req.file.path, (err) => {
+        if (err) logger.error('Failed to remove orphaned upload after failed report upload', err);
+      });
+    }
+    if (error instanceof AuthError) {
+      res.status(error.status).json({ success: false, message: error.message });
+      return;
+    }
+    logger.error('Upload patient report failed', error);
+    res.status(500).json({ success: false, message: 'Unable to upload report.' });
   }
 }
