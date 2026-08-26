@@ -17,8 +17,18 @@
 // underlying mock seed data itself ever being mutated. When a real backend
 // exists, every function body here becomes a `fetch` call; no caller needs
 // to change.
+//
+// Phase 6 Part 14: getHospital/updateHospitalProfile/getHospitalSettings/
+// updateHospitalSettings now ARE that real fetch call, against
+// /api/hospital/profile and /api/hospital/settings (hospital_profiles /
+// hospital_settings). Every other export below — dashboard, patients,
+// deliveries, neonatal, beds, vaccines, referrals, reports — is still the
+// in-memory mock store seeded from hospitalMockData.ts, unaffected by this
+// change; it keeps its own internal `_hospital.id` (the mock id) for
+// self-consistency, entirely decoupled from the real profile below.
 // ---------------------------------------------------------------------------
 
+import { API_BASE_URL, AuthApiError, AuthNetworkError, TOKEN_STORAGE_KEY } from '@/services/authApi';
 import { mockDoctor, mockHospital } from '@/data/mockData';
 import {
   HOSPITAL_NOW_ISO,
@@ -63,6 +73,44 @@ import {
   VaccineInventoryStatus,
 } from '@/types';
 
+// --- Real backend client (profile/settings only — see header note) ---------
+
+export class NotAuthenticatedError extends AuthApiError {}
+
+function getToken(): string {
+  const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+  if (!token) {
+    throw new NotAuthenticatedError('Sign in with your real account to view this data.');
+  }
+  return token;
+}
+
+async function authedFetch(path: string, options: RequestInit = {}): Promise<Record<string, unknown>> {
+  const token = getToken();
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+        Authorization: `Bearer ${token}`,
+        ...options.headers,
+      },
+    });
+  } catch {
+    throw new AuthNetworkError('Unable to reach the MaaSuraksha server. Please make sure the backend is running.');
+  }
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const message = typeof body.message === 'string' ? body.message : `Request failed with status ${res.status}.`;
+    throw new AuthApiError(message);
+  }
+  return body;
+}
+
+const get = (path: string) => authedFetch(path);
+const patchRequest = (path: string, body?: unknown) => authedFetch(path, { method: 'PATCH', body: body ? JSON.stringify(body) : undefined });
+
 const LATENCY_MS = 300;
 const simulateLatency = <T,>(value: T): Promise<T> =>
   new Promise((resolve) => setTimeout(() => resolve(value), LATENCY_MS));
@@ -104,17 +152,90 @@ const logActivity = (type: HospitalActivityItem['type'], description: string, re
 
 // --- Hospital profile --------------------------------------------------
 
-export async function getHospital(): Promise<HospitalProfile> {
-  return simulateLatency(clone(_hospital));
+// hospital_profiles has no available_beds column — bed availability is
+// tracked per-row in the (untouched, out-of-scope) beds module, not
+// aggregated onto the profile — so this stays undefined from the real API,
+// same as the existing UI's `hospital.availableBeds ?? '—'` already handles.
+export interface HospitalProfileView extends HospitalProfile {
+  tagline?: string;
+  establishedYear?: number;
+  accreditations?: string[];
+  visitingHours?: string;
+  emergencyContactNumber?: string;
+  ambulanceAvailable?: boolean;
 }
 
+interface HospitalProfileRowShape {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  facility_name: string;
+  facility_type: string | null;
+  license_number: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  postal_code: string | null;
+  contact_number: string | null;
+  total_beds: number;
+  neonatal_icu_available: boolean;
+  status: string | null;
+  tagline: string | null;
+  established_year: number | null;
+  accreditations: string[] | null;
+  visiting_hours: string | null;
+  emergency_contact_number: string | null;
+  ambulance_available: boolean;
+  created_at: string;
+}
+
+function toHospitalProfile(row: HospitalProfileRowShape): HospitalProfileView {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    phone: row.phone ?? undefined,
+    role: 'hospital',
+    facilityName: row.facility_name,
+    facilityType: (row.facility_type as HospitalProfile['facilityType']) ?? 'Private Maternity Center',
+    licenseNumber: row.license_number ?? '',
+    address: row.address ?? '',
+    city: row.city ?? '',
+    state: row.state ?? '',
+    postalCode: row.postal_code ?? undefined,
+    contactNumber: row.contact_number ?? '',
+    totalBeds: row.total_beds,
+    availableBeds: undefined,
+    neonatalICUAvailable: row.neonatal_icu_available,
+    status: (row.status as HospitalProfile['status']) ?? 'ACTIVE',
+    createdAt: row.created_at,
+    tagline: row.tagline ?? undefined,
+    establishedYear: row.established_year ?? undefined,
+    accreditations: row.accreditations ?? undefined,
+    visitingHours: row.visiting_hours ?? undefined,
+    emergencyContactNumber: row.emergency_contact_number ?? undefined,
+    ambulanceAvailable: row.ambulance_available,
+  };
+}
+
+export async function getHospital(): Promise<HospitalProfileView> {
+  const body = await get('/hospital/profile');
+  return toHospitalProfile(body.profile as HospitalProfileRowShape);
+}
+
+// Only the fields EditHospitalProfileModal.tsx collects — matches the
+// backend's own whitelist exactly (updateProfileForRole('hospital', ...)).
+// Facility identity fields (facilityName, facilityType, licenseNumber,
+// tagline, accreditations, ...) are managed by MaaSuraksha and are not part
+// of this type at all, matching the modal's own copy about that.
 export type HospitalProfileUpdate = Partial<
-  Omit<HospitalProfile, 'id' | 'licenseNumber' | 'role' | 'createdAt'>
+  Pick<HospitalProfile, 'address' | 'city' | 'state' | 'postalCode' | 'contactNumber' | 'totalBeds'>
 >;
 
-export async function updateHospitalProfile(patch: HospitalProfileUpdate): Promise<HospitalProfile> {
-  _hospital = { ..._hospital, ...patch };
-  return simulateLatency(clone(_hospital));
+export async function updateHospitalProfile(patch: HospitalProfileUpdate): Promise<HospitalProfileView> {
+  const body = await patchRequest('/hospital/profile', patch);
+  return toHospitalProfile(body.profile as HospitalProfileRowShape);
 }
 
 // --- Dashboard -----------------------------------------------------------
@@ -746,11 +867,39 @@ export const getHospitalReportTypeLabel = (type: HospitalReportType): string => 
 
 // --- Settings ------------------------------------------------------------
 
+interface HospitalSettingsRowShape {
+  hospital_id: string;
+  facility: Partial<HospitalSettings['facility']> | null;
+  notifications: Partial<HospitalSettings['notifications']> | null;
+  operational: Partial<HospitalSettings['operational']> | null;
+  privacy: Partial<HospitalSettings['privacy']> | null;
+}
+
+// A hospital account with no settings row yet is normal (no *_settings row
+// is created at registration — see settingsService.ts) — every missing
+// section falls back to this app's existing mock defaults, not an invented
+// value. Also updates the local `_settings` cache below, since
+// adjustVaccineQuantity() (Vaccines module, out of scope for this part)
+// still reads its default lowStockThreshold from it — keeping it in sync
+// means that untouched module keeps seeing whatever was actually saved.
+function mergeHospitalSettings(row: HospitalSettingsRowShape | null): HospitalSettings {
+  return {
+    hospitalId: row?.hospital_id ?? defaultHospitalSettings.hospitalId,
+    facility: { ...defaultHospitalSettings.facility, ...(row?.facility ?? {}) },
+    notifications: { ...defaultHospitalSettings.notifications, ...(row?.notifications ?? {}) },
+    operational: { ...defaultHospitalSettings.operational, ...(row?.operational ?? {}) },
+    privacy: { ...defaultHospitalSettings.privacy, ...(row?.privacy ?? {}) },
+  };
+}
+
 export async function getHospitalSettings(): Promise<HospitalSettings> {
-  return simulateLatency(clone(_settings));
+  const body = await get('/hospital/settings');
+  _settings = mergeHospitalSettings(body.settings as HospitalSettingsRowShape | null);
+  return clone(_settings);
 }
 
 export async function updateHospitalSettings(patch: Partial<HospitalSettings>): Promise<HospitalSettings> {
-  _settings = { ..._settings, ...patch };
-  return simulateLatency(clone(_settings));
+  const body = await patchRequest('/hospital/settings', patch);
+  _settings = mergeHospitalSettings(body.settings as HospitalSettingsRowShape | null);
+  return clone(_settings);
 }
