@@ -98,6 +98,12 @@ export const MOTHER_NAV_ITEMS: NavItem[] = [
     isPlaceholder: false,
   },
   {
+    title: 'Messages',
+    href: '/mother/messages',
+    icon: MessageCircle,
+    isPlaceholder: false,
+  },
+  {
     title: 'Notifications',
     href: '/mother/notifications',
     icon: Bell,
