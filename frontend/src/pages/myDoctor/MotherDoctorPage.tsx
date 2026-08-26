@@ -39,7 +39,6 @@ import {
 } from '@/pages/appointments/motherAppointmentUi';
 import { CareTeamMemberCard } from '@/pages/myHospital/components/CareTeamMemberCard';
 import { DoctorContactOption } from '@/types';
-import * as messageService from '@/services/messageService';
 import { DoctorContactCard } from './components/DoctorContactCard';
 import { MessageDoctorModal } from './components/MessageDoctorModal';
 import { ConsultationLogItem } from './components/ConsultationLogItem';
@@ -74,23 +73,6 @@ export const MotherDoctorPage: React.FC = () => {
       setToast({
         title: 'Video consultation requested',
         message: "Your care team will confirm a slot and notify you once it's scheduled.",
-      });
-    }
-  };
-
-  const handleMessageSent = async (messageText: string) => {
-    try {
-      const conversation = await messageService.startConversationWithMyDoctor();
-      await messageService.sendMessage(conversation.conversationId, messageText);
-      setToast({
-        title: 'Message sent',
-        message: `Your message has been sent to ${conversation.patientName}'s care team.`,
-      });
-    } catch (error) {
-      setToast({
-        title: 'Message not sent',
-        message: error instanceof Error ? error.message : 'Something went wrong. Please try again.',
-        type: 'error',
       });
     }
   };
@@ -340,7 +322,8 @@ export const MotherDoctorPage: React.FC = () => {
       <MessageDoctorModal
         isOpen={isMessageModalOpen}
         onClose={() => setMessageModalOpen(false)}
-        onSent={handleMessageSent}
+        doctorName={mockDoctor.name}
+        hospitalName={mockHospital.name}
       />
 
       {toast && (
