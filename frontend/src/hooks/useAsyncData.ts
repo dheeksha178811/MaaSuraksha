@@ -23,8 +23,17 @@ export function useAsyncData<T>(fetcher: () => Promise<T>, deps: unknown[] = [])
       .then((data) => {
         if (active) setState({ status: 'success', data });
       })
-      .catch(() => {
-        if (active) setState({ status: 'error', message: 'Something went wrong. Please try again.' });
+      .catch((error: unknown) => {
+        // Every real service-layer error (AuthApiError/AuthNetworkError and
+        // their per-service NotAuthenticatedError subclasses) carries a
+        // specific, actionable message — e.g. "Unable to reach the
+        // MaaSuraksha server. Please make sure the backend is running." or
+        // "Sign in with your real account to view this data." Surfacing it
+        // here (instead of a single hardcoded string for every failure) is
+        // what lets a genuine outage be told apart from an auth problem or
+        // an actual bug, rather than every case rendering identically.
+        const message = error instanceof Error && error.message ? error.message : 'Something went wrong. Please try again.';
+        if (active) setState({ status: 'error', message });
       });
     return () => {
       active = false;

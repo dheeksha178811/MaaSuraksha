@@ -31,6 +31,9 @@ import { getVaccinationsByRecipient } from '@/data/motherVaccinationsMockData';
 import { getMedicationsForMother } from '@/data/motherMedicationsMockData';
 import { getUpcomingAppointmentsForMother } from '@/data/motherAppointmentsMockData';
 import { getReportsForChild } from '@/data/childReportsMockData';
+import * as motherService from '@/services/motherService';
+import { useAsyncData } from '@/hooks/useAsyncData';
+import { AsyncStateView } from '@/pages/hospital/components/AsyncStateView';
 import { GrowthMeasurement, MilestoneRecord, MotherMedication, MotherVaccinationRecord, Report } from '@/types';
 
 import { MeasurementCard } from '@/pages/growth/components/MeasurementCard';
@@ -65,6 +68,12 @@ const SectionHeader: React.FC<SectionHeaderProps> = ({ icon, title, viewAllHref,
 );
 
 export const ChildProfilePage: React.FC = () => {
+  // Real check for whether this mother has a child_profiles row yet — an
+  // antenatal mother has none (delivery hasn't happened), so this gates the
+  // rest of the page (still mock-data-driven, unchanged) behind an actual
+  // absence check rather than a hardcoded account/email.
+  const [childrenState] = useAsyncData(() => motherService.getChildren(), []);
+
   const [milestones, setMilestones] = useState<MilestoneRecord[]>(() =>
     getMilestonesByRecipient(mockMother.id, 'CHILD')
   );
@@ -135,6 +144,28 @@ export const ChildProfilePage: React.FC = () => {
   const handleDownloadReport = (report: Report) => {
     alert(`Downloading: ${report.name}\n\nIn production, this would download the actual file.`);
   };
+
+  if (childrenState.status !== 'success') {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="My Child" subtitle="Your child's complete care profile will appear here." />
+        <AsyncStateView status={childrenState.status} loadingLabel="Loading child profile…" errorMessage={childrenState.status === 'error' ? childrenState.message : undefined} />
+      </div>
+    );
+  }
+
+  if (childrenState.data.length === 0) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="My Child" subtitle="Your child's complete care profile will appear here after delivery." />
+        <EmptyState
+          icon={Baby}
+          title="No child profile yet"
+          description="Your child profile will be available here after delivery."
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

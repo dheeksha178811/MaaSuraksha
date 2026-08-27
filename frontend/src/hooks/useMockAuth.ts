@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { UserRole, BaseUser } from '@/types';
 import { mockMother, mockDoctor, mockHospital } from '@/data/mockData';
-import { loginWithBackend, fetchCurrentUser, AuthApiError, RealAuthUser, TOKEN_STORAGE_KEY } from '@/services/authApi';
+import { loginWithBackend, fetchCurrentUser, AuthApiError, AuthNetworkError, RealAuthUser, TOKEN_STORAGE_KEY } from '@/services/authApi';
 
 const MOCK_USERS_BY_ROLE: Record<UserRole, BaseUser> = {
   mother: mockMother,
@@ -93,6 +93,19 @@ export function useMockAuth() {
   // previous real login — mirrors the existing role-persistence behavior,
   // now backed by a real account. An invalid/expired token is silently
   // cleared, leaving the existing mock-role state in place.
+  //
+  // This hook is called independently by several always-mounted components
+  // (Header, Sidebar, MobileDrawer, MaaSurakshaAssistant, AppLayout, ...), so
+  // on every full page load several of these restore calls fire concurrently
+  // against the same token. Only a genuine auth rejection (AuthApiError —
+  // the backend reached and said the token is invalid/expired) should clear
+  // it; a transient AuthNetworkError (backend momentarily unreachable, e.g.
+  // mid dev-server restart) must not, or one blip among these redundant
+  // calls silently logs out an otherwise still-valid, already-authenticated
+  // session — breaking any real-backed page (e.g. hospitalService's
+  // profile/settings) that reads the token afterward, even though the
+  // already-rendered header keeps showing the correct name from before the
+  // wipe.
   useEffect(() => {
     const token = sessionStorage.getItem(TOKEN_STORAGE_KEY);
     if (!token) return;
@@ -102,8 +115,10 @@ export function useMockAuth() {
         setUser(toBaseUser(realUser));
         sessionStorage.setItem(ROLE_STORAGE_KEY, realUser.role);
       })
-      .catch(() => {
-        sessionStorage.removeItem(TOKEN_STORAGE_KEY);
+      .catch((error) => {
+        if (!(error instanceof AuthNetworkError)) {
+          sessionStorage.removeItem(TOKEN_STORAGE_KEY);
+        }
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
