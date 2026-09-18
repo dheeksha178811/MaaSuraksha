@@ -17,6 +17,7 @@ import {
   rescheduleAppointment,
   getMyDocuments,
 } from '../controllers/motherController';
+import { getMyCareCard } from '../controllers/qrController';
 import { validateLogGrowthMeasurement } from '../validators/growthValidators';
 import { validateMarkMilestoneAchieved } from '../validators/milestoneValidators';
 import { validateToggleVaccinationReminder } from '../validators/vaccinationValidators';
@@ -48,5 +49,6 @@ router.post('/appointments', authenticate, requireRole('mother'), validateReques
 router.patch('/appointments/:appointmentId/cancel', authenticate, requireRole('mother'), validateCancelAppointment, cancelAppointment);
 router.patch('/appointments/:appointmentId/reschedule', authenticate, requireRole('mother'), validateRescheduleAppointment, rescheduleAppointment);
 router.get('/documents', authenticate, requireRole('mother'), getMyDocuments);
+router.get('/care-card', authenticate, requireRole('mother'), getMyCareCard);
 
 export default router;
