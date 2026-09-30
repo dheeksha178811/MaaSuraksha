@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Baby,
@@ -20,7 +20,9 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { formatDate } from '@/utils/formatters';
 import { mockChild, mockDoctor, mockHospital, mockMother } from '@/data/mockData';
-import { getCareCardForMother, getCareCardQrValue } from '@/data/motherCareCardMockData';
+import * as motherService from '@/services/motherService';
+import { useAsyncData } from '@/hooks/useAsyncData';
+import { AsyncStateView } from '@/pages/hospital/components/AsyncStateView';
 import { CareIdentityCard } from './components/CareIdentityCard';
 
 const HOW_TO_USE_STEPS = [
@@ -48,8 +50,10 @@ const HOW_TO_USE_STEPS = [
 
 export const MotherQrPage: React.FC = () => {
   const [copied, setCopied] = useState(false);
-  const careCard = useMemo(() => getCareCardForMother(mockMother.id), []);
-  const qrValue = useMemo(() => (careCard ? getCareCardQrValue(careCard) : ''), [careCard]);
+  const [careCardState, reloadCareCard] = useAsyncData(() => motherService.getCareCard(), []);
+  const careCard = careCardState.status === 'success' ? careCardState.data : null;
+  // The QR encodes ONLY the opaque qrToken from the backend — never any PHI.
+  const qrValue = careCard ? careCard.qrToken : '';
 
   const handleCopyId = async () => {
     if (!careCard) return;
@@ -62,7 +66,22 @@ export const MotherQrPage: React.FC = () => {
     }
   };
 
-  if (!careCard) return null;
+  if (!careCard) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="My MaaSuraksha QR"
+          subtitle="Your digital care identity card — show this QR at any hospital visit, camp, or emergency for instant care identification."
+        />
+        <AsyncStateView
+          status={careCardState.status === 'error' ? 'error' : 'loading'}
+          loadingLabel="Loading your care card…"
+          errorMessage={careCardState.status === 'error' ? careCardState.message : undefined}
+          onRetry={reloadCareCard}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 print:space-y-4">

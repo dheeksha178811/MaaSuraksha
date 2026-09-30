@@ -24,6 +24,7 @@ import {
   EmergencyContact,
   GrowthMeasurement,
   GrowthRecipientType,
+  MaternalCareCard,
   MilestoneRecord,
   MotherAppointment,
   MotherAppointmentStatus,
@@ -597,4 +598,43 @@ function toReport(row: DocumentRowShape): Report {
 export async function getDocuments(): Promise<Report[]> {
   const body = await get('/mother/documents');
   return ((body.documents as DocumentRowShape[]) ?? []).map(toReport);
+}
+
+// --- Care card (My MaaSuraksha QR page) --------------------------------------
+
+export interface MyCareCard extends MaternalCareCard {
+  // Opaque 64-char hex lookup key — the ONLY value the QR code encodes. It
+  // carries no PHI; resolving it requires a clinician JWT plus an active care
+  // assignment (GET /api/qr/scan/:token, backend-side).
+  qrToken: string;
+}
+
+interface CareCardResponseShape {
+  cardId: string;
+  motherId: string;
+  maaSurakshaId: string;
+  qrToken: string;
+  issuedDate: string | null;
+  validThrough: string | null;
+  isActive: boolean;
+}
+
+// The backend creates the card on first access (careCardService.ts
+// getOrCreateMyCareCard), so a signed-in mother always gets one back.
+export async function getCareCard(): Promise<MyCareCard> {
+  const body = await get('/mother/care-card');
+  const card = body.careCard as CareCardResponseShape;
+  // Both dates are always set when the backend issues a card; a missing one
+  // is surfaced as an error rather than rendered as an invalid date.
+  if (!card.issuedDate || !card.validThrough) {
+    throw new AuthApiError('Your care card is missing its issue dates. Please contact support.');
+  }
+  return {
+    cardId: card.cardId,
+    motherId: card.motherId,
+    maaSurakshaId: card.maaSurakshaId,
+    issuedDate: card.issuedDate,
+    validThrough: card.validThrough,
+    qrToken: card.qrToken,
+  };
 }
