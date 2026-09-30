@@ -9,6 +9,7 @@ import {
   HeartHandshake,
   Pill,
   QrCode,
+  ScanLine,
   Stethoscope,
   Syringe,
   Sparkles,
@@ -150,6 +151,12 @@ export const DOCTOR_NAV_ITEMS: NavItem[] = [
     isPlaceholder: false,
   },
   {
+    title: 'Scan Patient QR',
+    href: '/doctor/scan-qr',
+    icon: ScanLine,
+    isPlaceholder: false,
+  },
+  {
     title: 'Appointments',
     href: '/doctor/appointments',
     icon: CalendarCheck,
@@ -222,6 +229,12 @@ export const HOSPITAL_NAV_ITEMS: NavItem[] = [
     title: 'Patients / Mothers',
     href: '/hospital/patients',
     icon: Users,
+    isPlaceholder: false,
+  },
+  {
+    title: 'Scan Patient QR',
+    href: '/hospital/scan-qr',
+    icon: ScanLine,
     isPlaceholder: false,
   },
   {

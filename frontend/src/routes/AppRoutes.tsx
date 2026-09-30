@@ -56,6 +56,7 @@ import { AdminReportsPage } from '@/pages/admin/AdminReportsPage';
 import { AdminAlertsPage } from '@/pages/admin/AdminAlertsPage';
 import { AdminSettingsPage } from '@/pages/admin/AdminSettingsPage';
 import { AdminPlaceholderPage } from '@/pages/admin/AdminPlaceholderPage';
+import { QrScanPage } from '@/pages/qrScan/QrScanPage';
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -105,6 +106,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/doctor/profile" element={<DoctorProfilePage />} />
         <Route path="/doctor/settings" element={<DoctorSettingsPage />} />
         <Route path="/doctor/upload-report" element={<DoctorHospitalUploadFoundation />} />
+        <Route path="/doctor/scan-qr" element={<QrScanPage />} />
 
         {/* Hospital Space Routes (Module 6) */}
         <Route path="/hospital/dashboard" element={<HospitalDashboardPage />} />
@@ -119,6 +121,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/hospital/profile" element={<HospitalProfilePage />} />
         <Route path="/hospital/settings" element={<HospitalSettingsPage />} />
         <Route path="/hospital/upload-report" element={<DoctorHospitalUploadFoundation />} />
+        <Route path="/hospital/scan-qr" element={<QrScanPage />} />
 
         {/* Admin Space Routes (Module 7) */}
         <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
