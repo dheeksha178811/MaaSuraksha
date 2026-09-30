@@ -63,6 +63,17 @@ function generateQrToken(): string {
  * The state abbreviation is fixed to 'KA' in this phase; extending to a
  * real state field is additive (no schema change needed here).
  */
+// Arbitrary fixed key for pg_advisory_xact_lock — serializes MaaSuraksha ID
+// allocation across concurrent care-card creations (see getOrCreateMyCareCard).
+const MAA_SURAKSHA_ID_LOCK_KEY = 7_007_001;
+
+const ACTIVE_CARD_SELECT = `
+  SELECT id, mother_id, maa_suraksha_id, qr_token, issued_date, valid_through, is_active, created_at
+    FROM care_cards
+   WHERE mother_id = $1 AND is_active = true
+   ORDER BY created_at DESC
+   LIMIT 1`;
+
 function buildMaaSurakshaId(date: Date, rowIndex: number): string {
   const year = date.getFullYear();
   const seq = String(rowIndex % 1_000_000).padStart(6, '0');
@@ -82,9 +93,10 @@ async function assertMotherProfileExists(motherId: string): Promise<void> {
 
 /**
  * Returns the active care_cards row for this mother, creating one if it does
- * not yet exist. Creation is idempotent: a UNIQUE index on
- * (care_cards.mother_id is not enforced in migration 002, but we guard with
- * a SELECT-first pattern to avoid duplicates on concurrent requests).
+ * not yet exist. Creation is idempotent: no UNIQUE constraint on
+ * care_cards.mother_id exists (migration 002), so the existing-card check is
+ * repeated inside the advisory-locked transaction below — concurrent first
+ * requests for the same mother serialize there and only the first inserts.
  *
  * The qr_token is generated here with crypto.randomBytes so it is always
  * unguessable and not stored anywhere in plaintext outside the DB row.
@@ -92,15 +104,9 @@ async function assertMotherProfileExists(motherId: string): Promise<void> {
 export async function getOrCreateMyCareCard(motherId: string): Promise<MotherCareCardResponse> {
   await assertMotherProfileExists(motherId);
 
-  // Check for an existing active card first.
-  const existing = await pool.query<CareCardRow>(
-    `SELECT id, mother_id, maa_suraksha_id, qr_token, issued_date, valid_through, is_active, created_at
-       FROM care_cards
-      WHERE mother_id = $1 AND is_active = true
-      ORDER BY created_at DESC
-      LIMIT 1`,
-    [motherId]
-  );
+  // Fast path: an existing active card is returned without taking the lock.
+  // Not authoritative on its own — re-checked under the lock below.
+  const existing = await pool.query<CareCardRow>(ACTIVE_CARD_SELECT, [motherId]);
 
   if (existing.rows[0]) {
     return toMotherCareCardResponse(existing.rows[0]);
@@ -113,27 +119,54 @@ export async function getOrCreateMyCareCard(motherId: string): Promise<MotherCar
 
   const qrToken = generateQrToken();
 
-  // Use the total count of existing care_cards rows as a sequence seed for
-  // the human-readable ID. Collisions on the maa_suraksha_id are prevented
-  // by its UNIQUE constraint; in case of a conflict we retry once with a
-  // fresh random offset.
-  const countResult = await pool.query<{ cnt: string }>('SELECT COUNT(*) AS cnt FROM care_cards');
-  const rowIndex = parseInt(countResult.rows[0].cnt, 10) + 1;
-  const maaSurakshaId = buildMaaSurakshaId(now, rowIndex);
+  // The human-readable ID's counter is allocated under a transaction-scoped
+  // advisory lock, so concurrent card creations serialize here: each one
+  // reads the highest counter only after the previous insert has committed.
+  // The counter is MAX(existing suffix) + 1 rather than COUNT(*) + 1, since
+  // care_cards rows are removed by ON DELETE CASCADE from mother_profiles and
+  // a shrinking count would re-issue an ID that is still in use. The lock is
+  // released automatically on COMMIT/ROLLBACK.
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('SELECT pg_advisory_xact_lock($1)', [MAA_SURAKSHA_ID_LOCK_KEY]);
 
-  const result = await pool.query<CareCardRow>(
-    `INSERT INTO care_cards (mother_id, maa_suraksha_id, qr_token, issued_date, valid_through, is_active)
-          VALUES ($1, $2, $3, $4, $5, true)
-     RETURNING id, mother_id, maa_suraksha_id, qr_token, issued_date, valid_through, is_active, created_at`,
-    [
-      motherId,
-      maaSurakshaId,
-      qrToken,
-      now.toISOString().slice(0, 10),
-      validThrough.toISOString().slice(0, 10),
-    ]
-  );
-  return toMotherCareCardResponse(result.rows[0]);
+    // Authoritative re-check: a concurrent request for this same mother may
+    // have created her card while this one waited for the lock.
+    const lockedExisting = await client.query<CareCardRow>(ACTIVE_CARD_SELECT, [motherId]);
+    if (lockedExisting.rows[0]) {
+      await client.query('COMMIT');
+      return toMotherCareCardResponse(lockedExisting.rows[0]);
+    }
+
+    const maxResult = await client.query<{ max_seq: number | null }>(
+      `SELECT MAX(substring(maa_suraksha_id FROM '^MS-KA-[0-9]{4}-([0-9]{6})$')::int) AS max_seq
+         FROM care_cards`
+    );
+    const rowIndex = (maxResult.rows[0].max_seq ?? 0) + 1;
+    const maaSurakshaId = buildMaaSurakshaId(now, rowIndex);
+
+    const result = await client.query<CareCardRow>(
+      `INSERT INTO care_cards (mother_id, maa_suraksha_id, qr_token, issued_date, valid_through, is_active)
+            VALUES ($1, $2, $3, $4, $5, true)
+       RETURNING id, mother_id, maa_suraksha_id, qr_token, issued_date, valid_through, is_active, created_at`,
+      [
+        motherId,
+        maaSurakshaId,
+        qrToken,
+        now.toISOString().slice(0, 10),
+        validThrough.toISOString().slice(0, 10),
+      ]
+    );
+
+    await client.query('COMMIT');
+    return toMotherCareCardResponse(result.rows[0]);
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 function toMotherCareCardResponse(row: CareCardRow): MotherCareCardResponse {
