@@ -7,6 +7,7 @@ import {
   FileText,
   FolderHeart,
   HeartHandshake,
+  Landmark,
   Pill,
   QrCode,
   ScanLine,
@@ -94,6 +95,12 @@ export const MOTHER_NAV_ITEMS: NavItem[] = [
     title: 'My Doctor',
     href: '/mother/doctor',
     icon: Stethoscope,
+    isPlaceholder: false,
+  },
+  {
+    title: 'Government Schemes',
+    href: '/mother/schemes',
+    icon: Landmark,
     isPlaceholder: false,
   },
   {

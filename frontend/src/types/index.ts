@@ -14,6 +14,7 @@ export * from './notification';
 export * from './navigation';
 export * from './assistant';
 export * from './report';
+export * from './scheme';
 export * from './careTeam';
 export * from './motherDoctor';
 export * from './motherQr';
