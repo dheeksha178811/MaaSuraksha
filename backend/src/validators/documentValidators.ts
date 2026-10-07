@@ -56,3 +56,11 @@ export function validateUploadReport(req: Request, res: Response, next: NextFunc
 
   next();
 }
+
+export function validateDocumentIdParam(req: Request, res: Response, next: NextFunction) {
+  if (!UUID_REGEX.test(req.params.documentId ?? '')) {
+    res.status(400).json({ success: false, message: 'Validation failed', errors: ['documentId must be a valid UUID.'] });
+    return;
+  }
+  next();
+}

@@ -1,6 +1,12 @@
+import fs from 'fs';
 import path from 'path';
 import { pool } from '../config/db';
 import { AuthError } from './authService';
+
+// Same two locations middleware/uploadReportFile.ts writes to and
+// uploadDocumentForPatient below derives file_url relative to.
+const BACKEND_ROOT = path.join(__dirname, '../..');
+const UPLOAD_DIR = path.join(BACKEND_ROOT, 'uploads/documents');
 
 export interface DocumentReportRow {
   document_id: string;
@@ -77,10 +83,10 @@ export interface UploadReportInput {
  * actually owns, never accepted from the client.
  *
  * file.path is this process's local disk path under backend/uploads/documents
- * (see middleware/uploadReportFile.ts). No HTTP route serves it back yet —
- * that's a real, reported limitation, not a bug — so file_url stores a
- * server-relative path (uploads/documents/<generated-name>) as internal
- * storage metadata only, not a browser-reachable URL.
+ * (see middleware/uploadReportFile.ts). file_url stores a server-relative
+ * path (uploads/documents/<generated-name>) as internal storage metadata
+ * only, not a browser-reachable URL — the file is only ever served back
+ * through getDocumentDownloadForUser below.
  */
 export async function uploadDocumentForPatient(
   doctorId: string,
@@ -178,4 +184,94 @@ export async function listDocumentsForMother(motherId: string): Promise<MotherDo
     [motherId]
   );
   return result.rows;
+}
+
+export type DocumentDownloadRole = 'mother' | 'doctor';
+
+export interface DocumentDownload {
+  directory: string;
+  relativePath: string;
+  downloadName: string;
+}
+
+/**
+ * Turns a stored documents.file_url into a real file inside UPLOAD_DIR, or
+ * null if there isn't one. file_url is only ever written server-side, but it
+ * is still treated as untrusted here: it is resolved, symlinks are followed
+ * (realpath), and the result must still sit strictly inside UPLOAD_DIR —
+ * so a "../" segment, an absolute path, or a symlink pointing elsewhere can
+ * never make this serve a file from outside the uploads folder.
+ */
+async function resolveStoredFile(fileUrl: string | null): Promise<{ directory: string; relativePath: string } | null> {
+  if (!fileUrl) return null;
+
+  try {
+    const directory = await fs.promises.realpath(UPLOAD_DIR);
+    const realPath = await fs.promises.realpath(path.resolve(BACKEND_ROOT, fileUrl));
+    const relativePath = path.relative(directory, realPath);
+    if (!relativePath || relativePath === '..' || relativePath.startsWith(`..${path.sep}`) || path.isAbsolute(relativePath)) {
+      return null;
+    }
+    const stat = await fs.promises.stat(realPath);
+    if (!stat.isFile()) return null;
+    return { directory, relativePath };
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === 'ENOENT' || code === 'ENOTDIR') return null;
+    throw error;
+  }
+}
+
+function buildDownloadName(documentName: string, storedPath: string): string {
+  const ext = path.extname(storedPath).toLowerCase();
+  const base = documentName.replace(/[\/:*?"<>|\x00-\x1f]/g, '_').trim() || 'document';
+  return base.toLowerCase().endsWith(ext) ? base : `${base}${ext}`;
+}
+
+/**
+ * Looks up one document's file for download. userId/role come from the
+ * verified JWT only; documentId is just a lookup key, and the ownership
+ * condition is part of the same query, so a document the caller isn't
+ * entitled to is indistinguishable from one that doesn't exist (404 — same
+ * convention as "Patient not found for this account." above).
+ *
+ * - mother: documents.mother_id must be her own id (same scoping as
+ *   listDocumentsForMother).
+ * - doctor: the document's patient_care_record_id must point at an active
+ *   patient_care_records row assigned to this doctor (same ownership rule as
+ *   uploadDocumentForPatient).
+ *
+ * A row with no file on disk (e.g. seeded demo documents, which have no
+ * file_url) is also a 404.
+ */
+export async function getDocumentDownloadForUser(
+  userId: string,
+  role: DocumentDownloadRole,
+  documentId: string
+): Promise<DocumentDownload> {
+  const result =
+    role === 'mother'
+      ? await pool.query<{ name: string; file_url: string | null }>(
+          `SELECT name, file_url FROM documents WHERE id = $1 AND mother_id = $2`,
+          [documentId, userId]
+        )
+      : await pool.query<{ name: string; file_url: string | null }>(
+          `SELECT d.name, d.file_url
+           FROM documents d
+           JOIN patient_care_records pcr ON pcr.id = d.patient_care_record_id
+           WHERE d.id = $1 AND pcr.doctor_id = $2 AND pcr.is_active = true`,
+          [documentId, userId]
+        );
+
+  const document = result.rows[0];
+  if (!document) {
+    throw new AuthError('Document not found for this account.', 404);
+  }
+
+  const file = await resolveStoredFile(document.file_url);
+  if (!file) {
+    throw new AuthError('No file is available for this document.', 404);
+  }
+
+  return { ...file, downloadName: buildDownloadName(document.name, file.relativePath) };
 }

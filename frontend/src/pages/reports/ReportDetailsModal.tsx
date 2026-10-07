@@ -11,12 +11,14 @@ interface ReportDetailsModalProps {
   report: Report;
   onClose: () => void;
   onDownload: (report: Report) => void;
+  isDownloading?: boolean;
 }
 
 export const ReportDetailsModal: React.FC<ReportDetailsModalProps> = ({
   report,
   onClose,
   onDownload,
+  isDownloading = false,
 }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -138,9 +140,13 @@ export const ReportDetailsModal: React.FC<ReportDetailsModalProps> = ({
             Close
           </Button>
           {report.status === 'COMPLETED' && (
-            <Button onClick={() => onDownload(report)} className="gap-2">
-              <Download className="w-4 h-4" />
-              Download Report
+            <Button onClick={() => onDownload(report)} disabled={isDownloading} className="gap-2">
+              {isDownloading ? (
+                <span className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+              ) : (
+                <Download className="w-4 h-4" />
+              )}
+              {isDownloading ? 'Downloading…' : 'Download Report'}
             </Button>
           )}
         </div>

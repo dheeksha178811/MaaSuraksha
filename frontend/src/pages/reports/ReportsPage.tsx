@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Badge } from '@/components/ui/Badge';
+import { Toast } from '@/components/ui/Toast';
 import { REPORT_CATEGORIES, getReportSummary, filterReportsByCategory, searchReports } from '@/data/reportsMockData';
 import * as motherService from '@/services/motherService';
 import { useAsyncData } from '@/hooks/useAsyncData';
@@ -17,6 +18,8 @@ export const ReportsPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const [reportsState, reloadReports] = useAsyncData(() => motherService.getDocuments(), []);
   const reports = reportsState.status === 'success' ? reportsState.data : [];
@@ -56,11 +59,17 @@ export const ReportsPage: React.FC = () => {
     }
   };
 
-  const handleDownload = (report: Report) => {
-    // Frontend mock interaction - log to console and show feedback
-    console.log('Mock download initiated for:', report.name);
-    // In a real app, this would trigger a file download from the backend
-    alert(`Downloading: ${report.name}\n\nIn production, this would download the actual file.`);
+  const handleDownload = async (report: Report) => {
+    if (downloadingId) return;
+    setDownloadingId(report.id);
+    setDownloadError(null);
+    try {
+      await motherService.downloadDocument(report);
+    } catch (error) {
+      setDownloadError(error instanceof Error ? error.message : 'Something went wrong. Please try again.');
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
   const handleViewReport = (report: Report) => {
@@ -238,10 +247,15 @@ export const ReportsPage: React.FC = () => {
                       size="sm"
                       variant="outline"
                       onClick={() => handleDownload(report)}
+                      disabled={downloadingId !== null}
                       className="gap-2"
                     >
-                      <Download className="w-4 h-4" />
-                      <span className="hidden sm:inline">Download</span>
+                      {downloadingId === report.id ? (
+                        <span className="w-4 h-4 rounded-full border-2 border-sandal-200 border-t-sandal-600 animate-spin" />
+                      ) : (
+                        <Download className="w-4 h-4" />
+                      )}
+                      <span className="hidden sm:inline">{downloadingId === report.id ? 'Downloading…' : 'Download'}</span>
                     </Button>
                   )}
                 </div>
@@ -257,7 +271,14 @@ export const ReportsPage: React.FC = () => {
           report={selectedReport}
           onClose={() => setSelectedReport(null)}
           onDownload={handleDownload}
+          isDownloading={downloadingId === selectedReport.id}
         />
+      )}
+
+      {downloadError && (
+        <div className="fixed bottom-6 right-6 z-[60] animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <Toast type="error" title="Download failed" message={downloadError} onClose={() => setDownloadError(null)} />
+        </div>
       )}
     </div>
   );

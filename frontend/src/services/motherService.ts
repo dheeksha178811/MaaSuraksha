@@ -600,6 +600,75 @@ export async function getDocuments(): Promise<Report[]> {
   return ((body.documents as DocumentRowShape[]) ?? []).map(toReport);
 }
 
+// MIME type -> extension for the file types the backend's upload allowlist
+// accepts (backend middleware/uploadReportFile.ts) — only used to name the
+// saved file when the response's own filename can't be read.
+const DOWNLOAD_EXTENSIONS: Record<string, string> = {
+  'application/pdf': '.pdf',
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/gif': '.gif',
+  'image/webp': '.webp',
+  'application/msword': '.doc',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+};
+
+function filenameFromContentDisposition(header: string | null): string | null {
+  if (!header) return null;
+  const encoded = /filename\*\s*=\s*UTF-8''([^;]+)/i.exec(header);
+  if (encoded) {
+    try {
+      return decodeURIComponent(encoded[1].trim());
+    } catch {
+      // Malformed encoding — fall through to the plain filename parameter.
+    }
+  }
+  const plain = /filename\s*=\s*(?:"([^"]*)"|([^;]+))/i.exec(header);
+  return (plain?.[1] ?? plain?.[2])?.trim() || null;
+}
+
+function fallbackDownloadName(report: Report, blob: Blob): string {
+  const base = report.name.replace(/[\\/:*?"<>|]/g, '_').trim() || 'document';
+  const ext = DOWNLOAD_EXTENSIONS[blob.type.split(';')[0].trim()] ?? '';
+  return base.toLowerCase().endsWith(ext) ? base : `${base}${ext}`;
+}
+
+// Downloads one document's file through GET /api/documents/:id/download
+// (JWT-authorized server-side — the backend decides whether this account may
+// have the file) and hands it to the browser as a normal file download. The
+// saved filename is the one the backend returns in Content-Disposition when
+// the browser exposes that header, otherwise the report's own name plus an
+// extension matching the returned file type.
+export async function downloadDocument(report: Report): Promise<void> {
+  const token = getToken();
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}/documents/${encodeURIComponent(report.id)}/download`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    throw new AuthNetworkError('Unable to reach the MaaSuraksha server. Please make sure the backend is running.');
+  }
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    const message = typeof body.message === 'string' ? body.message : `Download failed with status ${res.status}.`;
+    throw new AuthApiError(message);
+  }
+
+  const blob = await res.blob();
+  const filename = filenameFromContentDisposition(res.headers.get('Content-Disposition')) ?? fallbackDownloadName(report, blob);
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  // Revoked on a later tick so the browser has started the save first.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 // --- Care card (My MaaSuraksha QR page) --------------------------------------
 
 export interface MyCareCard extends MaternalCareCard {

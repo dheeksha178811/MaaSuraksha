@@ -6,6 +6,7 @@ import doctorRoutes from './doctorRoutes';
 import hospitalRoutes from './hospitalRoutes';
 import adminRoutes from './adminRoutes';
 import messageRoutes from './messageRoutes';
+import documentRoutes from './documentRoutes';
 import qrRoutes from './qrRoutes';
 import testRoutes from './testRoutes';
 
@@ -18,6 +19,7 @@ router.use('/doctor', doctorRoutes);
 router.use('/hospital', hospitalRoutes);
 router.use('/admin', adminRoutes);
 router.use('/messages', messageRoutes);
+router.use('/documents', documentRoutes);
 router.use('/qr', qrRoutes);
 router.use('/test', testRoutes);
 
