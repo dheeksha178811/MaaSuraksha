@@ -17,6 +17,7 @@ import {
 } from '@/services/qrService';
 import { useMockAuth } from '@/hooks/useMockAuth';
 import { PatientQrSummary } from './components/PatientQrSummary';
+import { AdditionalDetailsPanel } from './components/AdditionalDetailsPanel';
 import { ScanFailure, describeScanFailure } from './qrScanUi';
 
 // Where a clinician's phone lands after scanning a mother's MaaSuraksha QR
@@ -33,7 +34,7 @@ type View =
   | { kind: 'signin'; expired: boolean }
   | { kind: 'wrongRole' }
   | { kind: 'failure'; failure: ScanFailure }
-  | { kind: 'success'; patient: QrScanPatient };
+  | { kind: 'success'; patient: QrScanPatient; token: string };
 
 const SIGN_IN_REDIRECT_DELAY_MS = 1800;
 
@@ -70,7 +71,7 @@ export const QrLandingPage: React.FC = () => {
       .then((patient) => {
         if (cancelled) return;
         clearPendingQrToken();
-        setView({ kind: 'success', patient });
+        setView({ kind: 'success', patient, token });
       })
       .catch((error) => {
         if (cancelled) return;
@@ -212,6 +213,7 @@ export const QrLandingPage: React.FC = () => {
       {view.kind === 'success' && (
         <>
           <PatientQrSummary patient={view.patient} />
+          <AdditionalDetailsPanel qrToken={view.token} />
           <div className="flex flex-col sm:flex-row gap-2">
             {(role === 'doctor' || role === 'hospital') && (
               <Link to={`/${role}/scan-qr`}>

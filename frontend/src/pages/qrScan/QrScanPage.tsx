@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { QrScanPatient, parseQrInput, scanQrToken } from '@/services/qrService';
 import { PatientQrSummary } from './components/PatientQrSummary';
 import { QrCameraScanner } from './components/QrCameraScanner';
+import { AdditionalDetailsPanel } from './components/AdditionalDetailsPanel';
 import { ScanFailure, describeScanFailure } from './qrScanUi';
 
 // Shared by /doctor/scan-qr and /hospital/scan-qr. Two ways in: "Scan with
@@ -23,6 +24,8 @@ export const QrScanPage: React.FC = () => {
   const [inputError, setInputError] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
   const [patient, setPatient] = useState<QrScanPatient | null>(null);
+  // Kept in memory (never rendered) so the consent request can reference this scan.
+  const [patientToken, setPatientToken] = useState<string | null>(null);
   const [failure, setFailure] = useState<ScanFailure | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
 
@@ -30,6 +33,7 @@ export const QrScanPage: React.FC = () => {
     setLoading(true);
     try {
       setPatient(await scanQrToken(token));
+      setPatientToken(token);
     } catch (error) {
       setFailure(describeScanFailure(error));
     } finally {
@@ -144,6 +148,7 @@ export const QrScanPage: React.FC = () => {
       )}
 
       {patient && <PatientQrSummary patient={patient} />}
+      {patient && patientToken && <AdditionalDetailsPanel qrToken={patientToken} />}
     </div>
   );
 };

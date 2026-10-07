@@ -59,6 +59,7 @@ import { AdminSettingsPage } from '@/pages/admin/AdminSettingsPage';
 import { AdminPlaceholderPage } from '@/pages/admin/AdminPlaceholderPage';
 import { QrScanPage } from '@/pages/qrScan/QrScanPage';
 import { QrLandingPage } from '@/pages/qrScan/QrLandingPage';
+import { MotherAccessRequestsPage } from '@/pages/accessRequests/MotherAccessRequestsPage';
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -96,6 +97,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/mother/hospital" element={<MotherHospitalPage />} />
         <Route path="/mother/notifications" element={<MotherNotificationsPage />} />
         <Route path="/mother/qr" element={<MotherQrPage />} />
+        <Route path="/mother/access-requests" element={<MotherAccessRequestsPage />} />
 
         {/* Doctor Space Routes */}
         <Route path="/doctor/dashboard" element={<DoctorDashboardPage />} />

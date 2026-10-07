@@ -8,6 +8,7 @@ import adminRoutes from './adminRoutes';
 import messageRoutes from './messageRoutes';
 import documentRoutes from './documentRoutes';
 import qrRoutes from './qrRoutes';
+import consentRoutes from './consentRoutes';
 import testRoutes from './testRoutes';
 
 const router = Router();
@@ -21,6 +22,7 @@ router.use('/admin', adminRoutes);
 router.use('/messages', messageRoutes);
 router.use('/documents', documentRoutes);
 router.use('/qr', qrRoutes);
+router.use('/consent', consentRoutes);
 router.use('/test', testRoutes);
 
 export default router;

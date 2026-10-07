@@ -11,6 +11,7 @@ import {
   Pill,
   QrCode,
   ScanLine,
+  ShieldCheck,
   Stethoscope,
   Syringe,
   Sparkles,
@@ -119,6 +120,12 @@ export const MOTHER_NAV_ITEMS: NavItem[] = [
     title: 'My MaaSuraksha QR',
     href: '/mother/qr',
     icon: QrCode,
+    isPlaceholder: false,
+  },
+  {
+    title: 'Access Requests',
+    href: '/mother/access-requests',
+    icon: ShieldCheck,
     isPlaceholder: false,
   },
   {
