@@ -1210,6 +1210,52 @@ const DOCTOR2_MOTHERS: MotherScenario[] = [
   },
 ];
 
+// ---------------------------------------------------------------------------
+// Doctor Dashboard demo appointments � Dr. Priya Menon's existing patients.
+// The dashboard's "Today's" and "Upcoming" lists only show status 'upcoming'
+// on or after today, so dates here are offsets from the day the seed runs
+// (UTC date, the same "today" the dashboard computes). Idempotency is keyed on
+// (mother, doctor, title) rather than date, so re-running on a later day does
+// not add duplicates.
+// ---------------------------------------------------------------------------
+interface DashboardAppointmentSeed extends Omit<AppointmentSeed, 'date' | 'forChild'> {
+  motherEmail: string;
+  dayOffset: number;
+}
+
+const DASHBOARD_APPOINTMENT_SEEDS: DashboardAppointmentSeed[] = [
+  { motherEmail: 'meera.iyer@example.com', dayOffset: 0, time: '10:00 AM', category: 'ANTENATAL_CHECKUP', title: 'Antenatal Check-up', location: 'OPD Block A, Room 204', reason: 'Routine antenatal review and blood pressure monitoring.', status: 'upcoming' },
+  { motherEmail: 'kavya.reddy@example.com', dayOffset: 0, time: '02:30 PM', category: 'POSTNATAL_CHECKUP', title: 'Postnatal Check-up', location: 'OPD Block A, Room 204', reason: 'Postpartum recovery review and breastfeeding support.', status: 'upcoming' },
+  { motherEmail: 'fatima.sheikh@example.com', dayOffset: 2, time: '11:00 AM', category: 'ULTRASOUND_SCAN', title: 'Growth Ultrasound Scan', location: 'Radiology Suite', reason: 'Fetal growth and amniotic fluid assessment.', status: 'upcoming' },
+  { motherEmail: 'sneha.joshi@example.com', dayOffset: 6, time: '09:30 AM', category: 'LAB_TEST', title: 'Follow-up Blood Work', location: 'Diagnostics Lab, Ground Floor', reason: 'Hemoglobin and iron panel follow-up.', status: 'upcoming' },
+  { motherEmail: 'ritika.verma@example.com', dayOffset: 9, time: '04:00 PM', category: 'ANTENATAL_CHECKUP', title: 'Antenatal Review', location: 'OPD Block A, Room 204', reason: 'Scheduled follow-up consultation.', status: 'upcoming' },
+];
+
+async function ensureDashboardAppointments(doctorId: string, hospitalId: string): Promise<void> {
+  for (const a of DASHBOARD_APPOINTMENT_SEEDS) {
+    // Only for a mother who is actually Dr. Menon's active patient.
+    const patient = await pool.query<{ mother_id: string }>(
+      `SELECT pcr.mother_id FROM patient_care_records pcr JOIN users u ON u.id = pcr.mother_id
+        WHERE u.email = $1 AND pcr.doctor_id = $2 AND pcr.is_active = true`,
+      [a.motherEmail, doctorId]
+    );
+    const motherId = patient.rows[0]?.mother_id;
+    if (!motherId) {
+      console.log(`  dashboard appointment skipped (not an active patient): ${a.motherEmail}`);
+      continue;
+    }
+    const existing = await pool.query('SELECT 1 FROM appointments WHERE mother_id = $1 AND doctor_id = $2 AND title = $3', [motherId, doctorId, a.title]);
+    if (existing.rowCount) continue;
+    const day = new Date(Date.now() + a.dayOffset * 86_400_000).toISOString().slice(0, 10);
+    await pool.query(
+      `INSERT INTO appointments (mother_id, doctor_id, hospital_id, category, title, appt_date, appt_time, location, reason, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      [motherId, doctorId, hospitalId, a.category, a.title, day, to24Hour(a.time), a.location, a.reason ?? null, a.status]
+    );
+  }
+  console.log(`  dashboard appointments: ${DASHBOARD_APPOINTMENT_SEEDS.length} seeded/verified`);
+}
+
 async function main() {
   if (process.env.NODE_ENV === 'production' && process.env.ALLOW_PROD_SEED !== 'true') {
     console.error(
@@ -1221,6 +1267,18 @@ async function main() {
   }
 
   try {
+    // `npm run seed:demo -- --dashboard-appointments-only` adds just the
+    // dashboard appointments to an already-seeded database.
+    if (process.argv.includes('--dashboard-appointments-only')) {
+      const doc = await pool.query<{ id: string; hospital_id: string }>(
+        `SELECT dp.id, dp.hospital_id FROM doctor_profiles dp JOIN users u ON u.id = dp.id WHERE u.email = $1`,
+        ['priya.menon@sunrisewch.org']
+      );
+      if (!doc.rows[0]) throw new Error('Dr. Priya Menon is not seeded yet; run the full seed first.');
+      await ensureDashboardAppointments(doc.rows[0].id, doc.rows[0].hospital_id);
+      return;
+    }
+
     console.log('Seeding hospital: Sunrise Women & Children Hospital');
     // users.name mirrors facility_name for an institutional identity —
     // same real value in both places, not a duplicated invented one.
@@ -1354,6 +1412,9 @@ async function main() {
     for (const scenario of DOCTOR2_MOTHERS) {
       await seedMother(secondHospitalId, secondDoctorId, scenario);
     }
+
+    console.log('\nSeeding Doctor Dashboard appointments (Dr. Priya Menon)');
+    await ensureDashboardAppointments(doctorId, hospitalId);
 
     console.log('\nDemo seed complete.');
     console.log(`Demo login password for all seeded accounts: ${DEMO_PASSWORD}`);
