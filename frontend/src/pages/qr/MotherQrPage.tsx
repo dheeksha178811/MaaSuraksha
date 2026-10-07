@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/Button';
 import { formatDate } from '@/utils/formatters';
 import { mockChild, mockDoctor, mockHospital, mockMother } from '@/data/mockData';
 import * as motherService from '@/services/motherService';
+import { buildQrUrl } from '@/services/qrService';
 import { useAsyncData } from '@/hooks/useAsyncData';
 import { AsyncStateView } from '@/pages/hospital/components/AsyncStateView';
 import { CareIdentityCard } from './components/CareIdentityCard';
@@ -52,8 +53,9 @@ export const MotherQrPage: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const [careCardState, reloadCareCard] = useAsyncData(() => motherService.getCareCard(), []);
   const careCard = careCardState.status === 'success' ? careCardState.data : null;
-  // The QR encodes ONLY the opaque qrToken from the backend — never any PHI.
-  const qrValue = careCard ? careCard.qrToken : '';
+  // The QR encodes ONLY a MaaSuraksha link carrying the opaque qrToken from the
+  // backend (<origin>/q#t=<token>) — never any PHI.
+  const qrValue = careCard ? buildQrUrl(careCard.qrToken) : '';
 
   const handleCopyId = async () => {
     if (!careCard) return;

@@ -37,13 +37,27 @@ export async function getMyCareCard(req: Request, res: Response) {
 // — no information is leaked about whether the token exists at all.
 // ---------------------------------------------------------------------------
 export async function scanQrToken(req: Request, res: Response) {
+  await resolveScan(req, res, req.params.token);
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/qr/scan   body: { token }
+// Requires: authenticate + requireRole('doctor', 'hospital')
+// Same lookup and authorization as the GET above; the token travels in the
+// request body instead of the URL path, so it stays out of access/proxy logs.
+// This is what the mobile /q landing page uses.
+// ---------------------------------------------------------------------------
+export async function scanQrTokenFromBody(req: Request, res: Response) {
+  await resolveScan(req, res, req.body?.token);
+}
+
+async function resolveScan(req: Request, res: Response, token: unknown) {
   if (!req.user) {
     res.status(401).json({ success: false, message: 'Authentication token is required.' });
     return;
   }
 
-  const { token } = req.params;
-  if (!token || typeof token !== 'string' || token.length !== 64 || !/^[0-9a-f]+$/.test(token)) {
+  if (typeof token !== 'string' || token.length !== 64 || !/^[0-9a-f]+$/.test(token)) {
     res.status(400).json({ success: false, message: 'Invalid QR token format.' });
     return;
   }
@@ -56,6 +70,7 @@ export async function scanQrToken(req: Request, res: Response) {
       res.status(404).json({ success: false, message: 'QR code not recognised or you do not have access to this patient.' });
       return;
     }
+    res.setHeader('Cache-Control', 'private, no-store');
     res.status(200).json({ success: true, patient: result });
   } catch (error) {
     if (error instanceof AuthError) {

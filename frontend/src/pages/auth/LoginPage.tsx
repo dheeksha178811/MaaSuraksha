@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   HeartHandshake,
   Stethoscope,
@@ -21,9 +21,14 @@ import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
 import { useMockAuth } from '@/hooks/useMockAuth';
 import { AuthNetworkError } from '@/services/authApi';
+import { getSafeReturnPath } from '@/utils/returnPath';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  // In-app return path (e.g. "/q" after a QR scan). Read from router state, so
+  // only in-app navigation can set it, and still checked against a strict
+  // internal-path pattern before use.
+  const returnTo = getSafeReturnPath((useLocation().state as { from?: unknown } | null)?.from);
   const { loginAsRole, loginWithCredentials } = useMockAuth();
 
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
@@ -61,7 +66,7 @@ export const LoginPage: React.FC = () => {
     setLoginError(null);
     try {
       const realUser = await loginWithCredentials(email, password);
-      navigate(ROLE_CONFIGS[realUser.role].defaultPath);
+      navigate(returnTo ?? ROLE_CONFIGS[realUser.role].defaultPath);
     } catch (error) {
       if (error instanceof AuthNetworkError) {
         // Backend unreachable — fall back to the mock flow for the

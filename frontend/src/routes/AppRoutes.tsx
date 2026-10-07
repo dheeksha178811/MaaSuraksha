@@ -58,6 +58,7 @@ import { AdminAlertsPage } from '@/pages/admin/AdminAlertsPage';
 import { AdminSettingsPage } from '@/pages/admin/AdminSettingsPage';
 import { AdminPlaceholderPage } from '@/pages/admin/AdminPlaceholderPage';
 import { QrScanPage } from '@/pages/qrScan/QrScanPage';
+import { QrLandingPage } from '@/pages/qrScan/QrLandingPage';
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -67,6 +68,8 @@ export const AppRoutes: React.FC = () => {
         <Route path="/" element={<LandingPage />} />
         <Route path="/auth/login" element={<LoginPage />} />
         <Route path="/auth/register" element={<RegisterPage />} />
+        {/* Landing page for a scanned MaaSuraksha QR (<origin>/q#t=<token>) */}
+        <Route path="/q" element={<QrLandingPage />} />
       </Route>
 
       {/* Main Care Shell / Protected Style Routes */}

@@ -39,7 +39,7 @@ export const CareIdentityCard: React.FC<CareIdentityCardProps> = ({ mother, card
 
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 pt-5">
           <div className="bg-white rounded-2xl p-3 shrink-0 shadow-warm-md">
-            <QRCodeSVG value={qrValue} size={148} level="M" fgColor="#4E3A33" bgColor="#FFFFFF" />
+            <QRCodeSVG value={qrValue} size={168} level="M" fgColor="#4E3A33" bgColor="#FFFFFF" />
           </div>
 
           <div className="flex-1 min-w-0 w-full space-y-3 text-center sm:text-left">
