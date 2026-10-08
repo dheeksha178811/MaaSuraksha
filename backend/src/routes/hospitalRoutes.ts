@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import {
+  getMyHospitalPatient,
+  getMyHospitalPatients,
   getMyHospitalProfile,
   getMyHospitalSettings,
   updateMyHospitalProfile,
@@ -14,5 +16,7 @@ router.get('/profile', authenticate, requireRole('hospital'), getMyHospitalProfi
 router.patch('/profile', authenticate, requireRole('hospital'), updateMyHospitalProfile);
 router.get('/settings', authenticate, requireRole('hospital'), getMyHospitalSettings);
 router.patch('/settings', authenticate, requireRole('hospital'), updateMyHospitalSettings);
+router.get('/patients', authenticate, requireRole('hospital'), getMyHospitalPatients);
+router.get('/patients/:patientId', authenticate, requireRole('hospital'), getMyHospitalPatient);
 
 export default router;

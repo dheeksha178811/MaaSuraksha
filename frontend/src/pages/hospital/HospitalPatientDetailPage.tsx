@@ -17,8 +17,8 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { formatDate } from '@/utils/formatters';
-import { mockHospital } from '@/data/mockData';
-import { CreateReferralInput, createReferral, getHospitalPatientById } from '@/services/hospitalService';
+import { getHospitalRosterPatient } from '@/services/hospitalPatientService';
+import { CreateReferralInput, createReferral } from '@/services/referralService';
 import { useAsyncData } from '@/hooks/useAsyncData';
 import { AsyncStateView } from '@/pages/hospital/components/AsyncStateView';
 import { ReferralFormModal } from '@/pages/hospital/components/ReferralFormModal';
@@ -41,7 +41,7 @@ export const HospitalPatientDetailPage: React.FC = () => {
   const { patientId } = useParams<{ patientId: string }>();
   const [referralOpen, setReferralOpen] = useState(false);
 
-  const fetcher = useCallback(() => (patientId ? getHospitalPatientById(patientId) : Promise.resolve(undefined)), [patientId]);
+  const fetcher = useCallback(() => (patientId ? getHospitalRosterPatient(patientId) : Promise.resolve(undefined)), [patientId]);
   const [state, reload] = useAsyncData(fetcher, [patientId]);
 
   const handleCreateReferral = async (input: CreateReferralInput) => {
@@ -53,7 +53,7 @@ export const HospitalPatientDetailPage: React.FC = () => {
   if (state.status !== 'success') {
     return (
       <div className="space-y-6">
-        <PageHeader title="Patient Record" subtitle={mockHospital.facilityName} />
+        <PageHeader title="Patient Record" subtitle="This facility's patient registry" />
         <AsyncStateView status={state.status} loadingLabel="Loading patient record…" errorMessage={state.status === 'error' ? state.message : undefined} onRetry={reload} />
       </div>
     );
@@ -107,27 +107,15 @@ export const HospitalPatientDetailPage: React.FC = () => {
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div>
               <dt className="text-xs text-warm-muted">Age</dt>
-              <dd className="font-medium text-warm-brown">{patient.age}</dd>
+              <dd className="font-medium text-warm-brown">{patient.age ?? '—'}</dd>
             </div>
             <div>
               <dt className="text-xs text-warm-muted">Assigned Doctor</dt>
               <dd className="font-medium text-warm-brown">{patient.doctorName}</dd>
             </div>
             <div>
-              <dt className="text-xs text-warm-muted">Admission Date</dt>
+              <dt className="text-xs text-warm-muted">Under Care Since</dt>
               <dd className="font-medium text-warm-brown">{formatDate(patient.admissionDate)}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-warm-muted">Discharge Date</dt>
-              <dd className="font-medium text-warm-brown">{patient.dischargeDate ? formatDate(patient.dischargeDate) : 'Not discharged'}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-warm-muted">Ward</dt>
-              <dd className="font-medium text-warm-brown">{patient.ward}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-warm-muted">Bed</dt>
-              <dd className="font-medium text-warm-brown">{patient.bedLabel || 'Not assigned'}</dd>
             </div>
           </dl>
         </Card>
@@ -143,7 +131,7 @@ export const HospitalPatientDetailPage: React.FC = () => {
           </div>
           <div className="flex items-center justify-between p-2.5 rounded-lg bg-warm-ivory border border-sandal-100 text-sm">
             <span className="text-warm-muted">Facility</span>
-            <span className="font-semibold text-warm-brown">{mockHospital.facilityName}</span>
+            <span className="font-semibold text-warm-brown">{patient.facilityName}</span>
           </div>
         </Card>
       </div>

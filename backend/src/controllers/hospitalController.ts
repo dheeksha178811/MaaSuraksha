@@ -3,6 +3,7 @@ import { pool } from '../config/db';
 import { getProfileForRole, updateProfileForRole } from '../services/profileService';
 import { getSettingsForRole, upsertSettingsForRole } from '../services/settingsService';
 import { AuthError } from '../services/authService';
+import { getPatientForHospital, listPatientsForHospital } from '../services/hospitalPatientService';
 import { logger } from '../utils/logger';
 
 // Only the fields EditHospitalProfileModal.tsx actually collects â€” the same
@@ -117,5 +118,45 @@ export async function updateMyHospitalSettings(req: Request, res: Response) {
     }
     logger.error('Update hospital settings failed', error);
     res.status(500).json({ success: false, message: 'Unable to update hospital settings.' });
+  }
+}
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// GET /api/hospital/patients — the authenticated hospital's own roster. The
+// hospital comes from the JWT only; there is no hospital id in the request.
+export async function getMyHospitalPatients(req: Request, res: Response) {
+  if (!req.user) {
+    res.status(401).json({ success: false, message: 'Authentication token is required.' });
+    return;
+  }
+  try {
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.status(200).json({ success: true, patients: await listPatientsForHospital(req.user.id) });
+  } catch (error) {
+    logger.error('Fetch hospital patients failed', error);
+    res.status(500).json({ success: false, message: 'Unable to fetch patients.' });
+  }
+}
+
+// GET /api/hospital/patients/:patientId — 404 unless the patient is under this hospital.
+export async function getMyHospitalPatient(req: Request, res: Response) {
+  if (!req.user) {
+    res.status(401).json({ success: false, message: 'Authentication token is required.' });
+    return;
+  }
+  try {
+    if (!UUID_REGEX.test(req.params.patientId ?? '')) {
+      throw new AuthError('Patient not found for this account.', 404);
+    }
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.status(200).json({ success: true, patient: await getPatientForHospital(req.user.id, req.params.patientId) });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      res.status(error.status).json({ success: false, message: error.message });
+      return;
+    }
+    logger.error('Fetch hospital patient failed', error);
+    res.status(500).json({ success: false, message: 'Unable to fetch patient.' });
   }
 }

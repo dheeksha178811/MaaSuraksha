@@ -67,8 +67,6 @@ import {
   NeonatalStatus,
   PatientCareStatus,
   PatientRiskLevel,
-  ReferralPriority,
-  ReferralStatus,
   VaccineInventoryItem,
   VaccineInventoryStatus,
 } from '@/types';
@@ -631,100 +629,9 @@ export async function updateVaccineInventoryStatus(
   return simulateLatency(clone(item));
 }
 
-// --- Referrals ---------------------------------------------------------
-
-const REFERRAL_TRANSITIONS: Record<ReferralStatus, ReferralStatus[]> = {
-  PENDING: ['ACCEPTED', 'REJECTED', 'CANCELLED'],
-  ACCEPTED: ['IN_TRANSIT', 'CANCELLED'],
-  IN_TRANSIT: ['COMPLETED', 'CANCELLED'],
-  COMPLETED: [],
-  REJECTED: [],
-  CANCELLED: [],
-};
-
-export const canTransitionReferral = (from: ReferralStatus, to: ReferralStatus): boolean =>
-  REFERRAL_TRANSITIONS[from].includes(to);
-
-export interface ReferralAction {
-  label: string;
-  nextStatus: ReferralStatus;
-  tone: 'default' | 'danger';
-}
-
-const REFERRAL_ACTION_LABELS: Record<ReferralStatus, ReferralAction> = {
-  PENDING: { label: 'Mark Pending', nextStatus: 'PENDING', tone: 'default' },
-  ACCEPTED: { label: 'Accept', nextStatus: 'ACCEPTED', tone: 'default' },
-  IN_TRANSIT: { label: 'Mark In Transit', nextStatus: 'IN_TRANSIT', tone: 'default' },
-  COMPLETED: { label: 'Mark Completed', nextStatus: 'COMPLETED', tone: 'default' },
-  REJECTED: { label: 'Reject', nextStatus: 'REJECTED', tone: 'danger' },
-  CANCELLED: { label: 'Cancel', nextStatus: 'CANCELLED', tone: 'danger' },
-};
-
-export const getAvailableReferralActions = (status: ReferralStatus): ReferralAction[] =>
-  REFERRAL_TRANSITIONS[status].map((next) => REFERRAL_ACTION_LABELS[next]);
-
-export interface ReferralFilters {
-  status?: ReferralStatus;
-  priority?: ReferralPriority;
-  search?: string;
-}
-
-export async function getReferrals(filters: ReferralFilters = {}): Promise<HospitalReferral[]> {
-  let results = _referrals.filter((r) => r.hospitalId === _hospital.id);
-
-  if (filters.status) results = results.filter((r) => r.status === filters.status);
-  if (filters.priority) results = results.filter((r) => r.priority === filters.priority);
-  if (filters.search?.trim()) {
-    const q = filters.search.trim().toLowerCase();
-    results = results.filter(
-      (r) => getMotherName(r.motherId).toLowerCase().includes(q) || r.reason.toLowerCase().includes(q)
-    );
-  }
-
-  return simulateLatency(clone(results).sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
-}
-
-export interface CreateReferralInput {
-  motherId: string;
-  toHospitalId: string;
-  toHospitalName: string;
-  referringDoctorId: string;
-  reason: string;
-  priority: ReferralPriority;
-  notes?: string;
-}
-
-export async function createReferral(input: CreateReferralInput): Promise<HospitalReferral> {
-  const referral: HospitalReferral = {
-    id: nextId('ref', _referrals),
-    hospitalId: _hospital.id,
-    motherId: input.motherId,
-    fromHospitalId: _hospital.id,
-    toHospitalId: input.toHospitalId,
-    toHospitalName: input.toHospitalName,
-    referringDoctorId: input.referringDoctorId,
-    reason: input.reason,
-    priority: input.priority,
-    status: 'PENDING',
-    createdAt: HOSPITAL_NOW_ISO,
-    updatedAt: HOSPITAL_NOW_ISO,
-    notes: input.notes,
-  };
-  _referrals.unshift(referral);
-  logActivity('REFERRAL_CREATED', `Referral created for ${getMotherName(referral.motherId)} to ${referral.toHospitalName}.`, referral.id);
-  return simulateLatency(clone(referral));
-}
-
-export async function updateReferralStatus(id: string, nextStatus: ReferralStatus): Promise<HospitalReferral> {
-  const referral = _referrals.find((r) => r.id === id);
-  if (!referral) throw new Error(`Referral ${id} not found.`);
-  if (!canTransitionReferral(referral.status, nextStatus)) {
-    throw new Error(`Cannot move a referral from ${referral.status} to ${nextStatus}.`);
-  }
-  referral.status = nextStatus;
-  referral.updatedAt = HOSPITAL_NOW_ISO;
-  return simulateLatency(clone(referral));
-}
+// Referrals are now real: see services/referralService.ts (/api/referrals).
+// The in-memory `_referrals` store above only still feeds the not-yet-real
+// dashboard count, patient detail and reports.
 
 // --- Reports -----------------------------------------------------------
 

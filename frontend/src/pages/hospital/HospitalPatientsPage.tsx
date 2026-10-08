@@ -9,7 +9,8 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { formatDate } from '@/utils/formatters';
-import { CreateReferralInput, createReferral, getHospitalPatients } from '@/services/hospitalService';
+import { getHospitalRoster } from '@/services/hospitalPatientService';
+import { CreateReferralInput, createReferral } from '@/services/referralService';
 import { useAsyncData } from '@/hooks/useAsyncData';
 import { AsyncStateView } from '@/pages/hospital/components/AsyncStateView';
 import { ReferralFormModal } from '@/pages/hospital/components/ReferralFormModal';
@@ -49,7 +50,7 @@ export const HospitalPatientsPage: React.FC = () => {
 
   const fetcher = useCallback(
     () =>
-      getHospitalPatients({
+      getHospitalRoster({
         search: search || undefined,
         status: status === 'ALL' ? undefined : status,
         careType: careType === 'ALL' ? undefined : careType,
@@ -103,16 +104,14 @@ export const HospitalPatientsPage: React.FC = () => {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h4 className="font-semibold text-warm-brown">{patient.motherName}</h4>
-                    <span className="text-xs text-warm-muted">{patient.id}</span>
                     <Badge variant={getPatientStatusBadgeVariant(patient.status)} size="sm">{PATIENT_STATUS_LABELS[patient.status]}</Badge>
                     <Badge variant={getRiskBadgeVariant(patient.riskLevel)} size="sm">{patient.riskLevel} Risk</Badge>
                   </div>
                   <p className="text-sm text-warm-muted mt-1">
-                    Age {patient.age} • {CARE_TYPE_LABELS[patient.careType]} • Dr. {patient.doctorName}
+                    {patient.age !== null ? `Age ${patient.age} • ` : ''} {CARE_TYPE_LABELS[patient.careType]} • Dr. {patient.doctorName}
                   </p>
                   <p className="text-xs text-warm-muted mt-1">
-                    Admitted {formatDate(patient.admissionDate)}
-                    {patient.bedLabel ? ` • Bed ${patient.bedLabel}` : ''}
+                    Under care since {formatDate(patient.admissionDate)}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
