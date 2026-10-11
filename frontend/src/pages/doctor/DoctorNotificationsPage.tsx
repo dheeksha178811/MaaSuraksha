@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Bell, CheckCheck, Filter, Search } from 'lucide-react';
+import { AlertCircle, Bell, CheckCheck, Filter, Search } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -7,64 +7,58 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { cn } from '@/utils/cn';
-import { mockDoctor } from '@/data/mockData';
-import { getNotificationsForDoctor } from '@/data/doctorNotificationsMockData';
-import { DoctorNotification } from '@/types';
-import {
-  DOCTOR_NOTIFICATION_FILTER_TYPES,
-  DoctorNotificationFilter,
-} from '@/pages/doctor/doctorNotificationsUi';
-import { DoctorNotificationCard } from '@/pages/doctor/components/DoctorNotificationCard';
+import { markAllRead, useNotifications } from '@/hooks/useNotifications';
+import { AsyncStateView } from '@/pages/hospital/components/AsyncStateView';
+import { NotificationItemCard, kindOf } from '@/pages/notifications/components/NotificationItemCard';
+
+// Real notifications for the signed-in doctor (GET /api/notifications), sharing
+// one store with the header bell. Only access-request responses are generated
+// for doctors so far, so the filters cover what actually exists.
+
+type DoctorNotificationFilter = 'ALL' | 'UNREAD' | 'ACCESS' | 'URGENT';
 
 const FILTER_OPTIONS: { value: DoctorNotificationFilter; label: string }[] = [
   { value: 'ALL', label: 'All' },
   { value: 'UNREAD', label: 'Unread' },
-  { value: 'MESSAGE', label: 'Messages' },
-  { value: 'APPOINTMENT', label: 'Appointments' },
-  { value: 'REPORT', label: 'Reports' },
-  { value: 'CARE_PLAN', label: 'Care Plans' },
+  { value: 'ACCESS', label: 'Access Requests' },
   { value: 'URGENT', label: 'Urgent' },
 ];
 
 export const DoctorNotificationsPage: React.FC = () => {
-  const doctorId = mockDoctor.id;
-  const [notifications, setNotifications] = useState<DoctorNotification[]>(() => getNotificationsForDoctor(doctorId));
+  const inbox = useNotifications();
   const [filter, setFilter] = useState<DoctorNotificationFilter>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  const unreadCount = useMemo(() => notifications.filter((n) => !n.isRead).length, [notifications]);
+  const { notifications, unreadCount } = inbox;
 
   const filteredNotifications = useMemo(() => {
     let list = notifications;
     if (filter === 'UNREAD') list = list.filter((n) => !n.isRead);
     else if (filter === 'URGENT') list = list.filter((n) => n.priority === 'urgent');
-    else if (filter !== 'ALL') list = list.filter((n) => DOCTOR_NOTIFICATION_FILTER_TYPES[filter].includes(n.type));
+    else if (filter === 'ACCESS') list = list.filter((n) => kindOf(n.type) === 'CONSENT');
 
-    if (searchQuery.trim()) {
-      const q = searchQuery.trim().toLowerCase();
-      list = list.filter(
-        (n) =>
-          n.title.toLowerCase().includes(q) ||
-          n.description.toLowerCase().includes(q) ||
-          n.patientName?.toLowerCase().includes(q)
-      );
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      list = list.filter((n) => (n.title ?? '').toLowerCase().includes(q) || (n.message ?? '').toLowerCase().includes(q));
     }
     return list;
   }, [notifications, filter, searchQuery]);
 
-  const handleMarkRead = (id: string) => {
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
-  };
-
-  const handleMarkAllRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+  const handleMarkAll = async () => {
+    setActionError(null);
+    try {
+      await markAllRead();
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'Unable to update notifications.');
+    }
   };
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Clinical Notifications"
-        subtitle="Stay updated on patient alerts, reports, appointments, and care activity."
+        subtitle="Stay updated on responses to your patient access requests."
         badge={
           <div className="flex items-center gap-2">
             <Badge variant="sandal">{notifications.length} Total</Badge>
@@ -75,7 +69,7 @@ export const DoctorNotificationsPage: React.FC = () => {
           <Button
             variant="outline"
             leftIcon={<CheckCheck className="w-4 h-4" />}
-            onClick={handleMarkAllRead}
+            onClick={() => void handleMarkAll()}
             disabled={unreadCount === 0}
           >
             Mark All as Read
@@ -94,7 +88,7 @@ export const DoctorNotificationsPage: React.FC = () => {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-warm-muted" />
               <Input
                 type="text"
-                placeholder="Search notifications or patient..."
+                placeholder="Search notifications..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
@@ -120,16 +114,34 @@ export const DoctorNotificationsPage: React.FC = () => {
         </div>
       </Card>
 
-      {filteredNotifications.length === 0 ? (
+      {actionError && (
+        <Card padding="md" className="flex items-start gap-3 border-red-200 bg-red-50/60">
+          <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+          <p className="text-sm text-warm-muted">{actionError}</p>
+        </Card>
+      )}
+
+      {inbox.status === 'loading' ? (
+        <AsyncStateView status="loading" loadingLabel="Loading notifications…" />
+      ) : inbox.status === 'error' && notifications.length === 0 ? (
+        <AsyncStateView status="error" errorMessage={inbox.message} onRetry={() => void inbox.reload()} />
+      ) : filteredNotifications.length === 0 ? (
         <EmptyState
           icon={Bell}
-          title="No notifications found"
-          description="No notifications match this filter yet."
+          title={notifications.length === 0 ? 'No notifications yet' : 'No notifications found'}
+          description={
+            notifications.length === 0
+              ? 'When a patient approves or denies your access request, you will be notified here.'
+              : 'No notifications match this filter.'
+          }
         />
       ) : (
         <div className="space-y-3">
+          {inbox.status === 'error' && (
+            <p className="text-xs text-rose-700">Could not refresh: {inbox.message} Showing the last loaded notifications.</p>
+          )}
           {filteredNotifications.map((notification) => (
-            <DoctorNotificationCard key={notification.id} notification={notification} onMarkRead={handleMarkRead} />
+            <NotificationItemCard key={notification.id} notification={notification} onError={setActionError} />
           ))}
         </div>
       )}

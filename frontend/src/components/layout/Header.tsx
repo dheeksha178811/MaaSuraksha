@@ -1,22 +1,16 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
-  Bell,
   Menu,
   ChevronDown,
   User,
   Shield,
   LogOut,
-  Sparkles,
-  HeartHandshake,
-  Stethoscope,
 } from 'lucide-react';
 import { Breadcrumb } from '@/components/ui/Breadcrumb';
 import { Avatar } from '@/components/ui/Avatar';
-import { Badge } from '@/components/ui/Badge';
 import { Dropdown, DropdownItem } from '@/components/ui/Dropdown';
-import { mockNotifications } from '@/data/mockData';
-import { getDoctorAlerts } from '@/data/doctorPatientsMockData';
+import { NotificationBell } from './NotificationBell';
 import { BreadcrumbItem, UserRole } from '@/types';
 import { useMockAuth } from '@/hooks/useMockAuth';
 
@@ -34,11 +28,6 @@ export const Header: React.FC<HeaderProps> = ({
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useMockAuth();
-  const [showNotifications, setShowNotifications] = useState(false);
-  const isDoctor = currentRole === 'doctor';
-  const isPlaceholderRole = currentRole === 'hospital' || currentRole === 'admin';
-  const doctorAlerts = isDoctor ? getDoctorAlerts(user.id) : [];
-  const unreadNotificationCount = mockNotifications.filter((n) => !n.isRead).length;
 
   const profileRouteByRole: Record<UserRole, string> = {
     mother: '/mother/profile',
@@ -138,126 +127,8 @@ export const Header: React.FC<HeaderProps> = ({
           </span>
         </div>
 
-        {/* Notification Bell with Popup */}
-        <div className="relative">
-          <button
-            onClick={() => setShowNotifications(!showNotifications)}
-            aria-label="View notifications"
-            className="relative p-2 rounded-xl text-warm-muted hover:text-sandal-900 hover:bg-warm-cream focus:outline-none focus:ring-2 focus:ring-sandal-300 cursor-pointer transition-colors"
-          >
-            <Bell className="w-5 h-5" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-sandal-500 ring-2 ring-warm-ivory animate-pulse" />
-          </button>
-
-          {showNotifications && (
-            <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-white p-4 shadow-warm-lg border border-sandal-100 ring-1 ring-black/5 z-50 animate-in fade-in zoom-in-95 duration-150">
-              <div className="flex items-center justify-between pb-3 border-b border-sandal-100">
-                <div className="flex items-center gap-2">
-                  <span className="font-display font-semibold text-warm-brown">
-                    {isDoctor ? 'Clinical Alerts' : isPlaceholderRole ? 'Notifications' : 'Care Notifications'}
-                  </span>
-                  <Badge variant="sandal" size="sm">
-                    {isDoctor ? `${doctorAlerts.length} New` : isPlaceholderRole ? '0 New' : `${unreadNotificationCount} New`}
-                  </Badge>
-                </div>
-                <button
-                  onClick={() => setShowNotifications(false)}
-                  className="text-xs text-sandal-600 hover:underline"
-                >
-                  Close
-                </button>
-              </div>
-
-              {isDoctor ? (
-                <div className="py-2 space-y-2.5 max-h-72 overflow-y-auto">
-                  {doctorAlerts.length === 0 ? (
-                    <p className="text-xs text-warm-muted text-center py-4">
-                      No active alerts across your patients.
-                    </p>
-                  ) : (
-                    doctorAlerts.map((alert) => (
-                      <div
-                        key={alert.id}
-                        className="p-2.5 rounded-xl bg-warm-cream/50 hover:bg-warm-cream border border-sandal-100/50 transition-colors"
-                      >
-                        <div className="flex items-start gap-2.5">
-                          <div className="p-1.5 rounded-lg bg-peach-verySoft text-sandal-600 shrink-0 mt-0.5">
-                            <Stethoscope className="w-3.5 h-3.5" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-semibold text-warm-brown truncate">
-                              {alert.patientName}
-                            </p>
-                            <p className="text-[11px] text-warm-muted leading-relaxed mt-0.5">
-                              {alert.message}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              ) : isPlaceholderRole ? (
-                <div className="py-6 text-center">
-                  <p className="text-xs text-warm-muted">
-                    No notifications yet. This will be available in a future module.
-                  </p>
-                </div>
-              ) : (
-                <div className="py-2 space-y-2.5 max-h-72 overflow-y-auto">
-                  {mockNotifications.map((n) => (
-                    <div
-                      key={n.id}
-                      className="p-2.5 rounded-xl bg-warm-cream/50 hover:bg-warm-cream border border-sandal-100/50 transition-colors"
-                    >
-                      <div className="flex items-start gap-2.5">
-                        <div className="p-1.5 rounded-lg bg-peach-verySoft text-sandal-600 shrink-0 mt-0.5">
-                          {n.type === 'vaccination_reminder' ? (
-                            <Sparkles className="w-3.5 h-3.5" />
-                          ) : (
-                            <HeartHandshake className="w-3.5 h-3.5" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-warm-brown truncate">
-                            {n.title}
-                          </p>
-                          <p className="text-[11px] text-warm-muted leading-relaxed mt-0.5">
-                            {n.message}
-                          </p>
-                          <span className="text-[10px] text-sandal-600/80 font-medium block mt-1">
-                            {n.timestamp}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {!isPlaceholderRole && (
-                <div className="pt-2 border-t border-sandal-100 text-center space-y-1.5">
-                  <span className="text-[11px] text-warm-muted block">
-                    {isDoctor
-                      ? 'High-risk flags, overdue follow-ups, and reports awaiting review.'
-                      : 'Routine reminders for Ananya & baby Vihaan'}
-                  </span>
-                  {!isDoctor && (
-                    <button
-                      onClick={() => {
-                        setShowNotifications(false);
-                        navigate('/mother/notifications');
-                      }}
-                      className="text-xs font-semibold text-sandal-700 hover:underline"
-                    >
-                      View All Notifications
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        {/* Notification Bell with Popup (real, GET /api/notifications) */}
+        <NotificationBell role={currentRole} />
 
         <div className="h-6 w-px bg-sandal-200/60 hidden sm:block" />
 

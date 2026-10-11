@@ -1,5 +1,6 @@
 import { pool } from '../config/db';
 import { AuthError } from './authService';
+import { notify } from './notificationService';
 
 // ---------------------------------------------------------------------------
 // Referrals (hospital_referrals — migrations 003 + 009).
@@ -204,8 +205,21 @@ export async function createReferral(actor: Clinician, input: CreateReferralInpu
     [input.mother_id, care.hospital_id, input.to_hospital_id, care.doctor_id, input.reason, input.priority, input.clinical_summary]
   );
 
-  const row = await loadVisible(actor, inserted.rows[0].id);
-  return toView(row!, actor);
+  const row = (await loadVisible(actor, inserted.rows[0].id))!;
+
+  // Tell the receiving hospital. Recipient comes from the referral row itself.
+  await notify({
+    recipientUserId: row.to_hospital_id,
+    kind: 'referral',
+    type: 'REFERRAL_RECEIVED',
+    title: 'New referral received',
+    message: `${row.from_hospital_name} referred ${row.mother_name} (${row.priority.toLowerCase()}): ${row.reason ?? 'see referral'}`,
+    priority: row.priority === 'ROUTINE' ? 'normal' : 'urgent',
+    actionUrl: '/hospital/referrals',
+    dedupeKey: `referral:${row.id}:created`,
+  });
+
+  return toView(row, actor);
 }
 
 // ---------------------------------------------------------------------------
@@ -295,6 +309,22 @@ export async function transitionReferral(
     throw new AuthError('This action is not available for the referral in its current status.', 409);
   }
 
-  const row = await loadVisible(actor, referralId);
-  return toView(row!, actor);
+  const row = (await loadVisible(actor, referralId))!;
+
+  // Tell the sending hospital about the receiving hospital's decisions.
+  const outcome = { accept: 'accepted', reject: 'rejected', complete: 'completed' }[action as string];
+  if (outcome) {
+    await notify({
+      recipientUserId: row.from_hospital_id,
+      kind: 'referral',
+      type: `REFERRAL_${outcome.toUpperCase()}`,
+      title: `Referral ${outcome}`,
+      message: `${row.to_hospital_name} ${outcome} the referral for ${row.mother_name}.${action === 'reject' && row.rejection_reason ? ` Reason: ${row.rejection_reason}` : ''}`,
+      priority: action === 'reject' ? 'urgent' : 'normal',
+      actionUrl: '/hospital/referrals',
+      dedupeKey: `referral:${row.id}:${outcome}`,
+    });
+  }
+
+  return toView(row, actor);
 }

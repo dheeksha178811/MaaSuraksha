@@ -10,6 +10,7 @@ import documentRoutes from './documentRoutes';
 import qrRoutes from './qrRoutes';
 import consentRoutes from './consentRoutes';
 import referralRoutes from './referralRoutes';
+import notificationRoutes from './notificationRoutes';
 import testRoutes from './testRoutes';
 
 const router = Router();
@@ -25,6 +26,7 @@ router.use('/documents', documentRoutes);
 router.use('/qr', qrRoutes);
 router.use('/consent', consentRoutes);
 router.use('/referrals', referralRoutes);
+router.use('/notifications', notificationRoutes);
 router.use('/test', testRoutes);
 
 export default router;

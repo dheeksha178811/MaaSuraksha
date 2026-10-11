@@ -1,5 +1,6 @@
 import { pool } from '../config/db';
 import { AuthError } from './authService';
+import { notify } from './notificationService';
 import { listDocumentsForMother } from './documentService';
 import { listMyAppointments } from './appointmentService';
 import { listMyVaccinations } from './vaccinationService';
@@ -13,6 +14,15 @@ import { listMyMilestones } from './milestoneService';
 // requester, and only until access_expires_at. Every protected read goes
 // through getApprovedDataForRequester, which re-checks all of that in SQL.
 // ---------------------------------------------------------------------------
+
+const SECTION_LABELS: Record<string, string> = {
+  reports: 'Reports & Documents',
+  appointments: 'Appointments / Care History',
+  medications: 'Medications',
+  vaccinations: 'Vaccinations',
+  growth: 'Growth & Milestones',
+};
+const sectionLabel = (id: string) => SECTION_LABELS[id] ?? id;
 
 export const CONSENT_SECTIONS = ['reports', 'appointments', 'medications', 'vaccinations', 'growth'] as const;
 export type ConsentSection = (typeof CONSENT_SECTIONS)[number];
@@ -141,7 +151,20 @@ export async function createConsentRequest(
          RETURNING id`,
       [motherId, requester.role, requester.id, sections]
     );
-    return getRequestForRequester(requester, inserted.rows[0].id);
+    const view = await getRequestForRequester(requester, inserted.rows[0].id);
+
+    // Tell the mother (recipient = the mother resolved from her own QR card).
+    await notify({
+      recipientUserId: motherId,
+      kind: 'consent',
+      type: 'CONSENT_REQUESTED',
+      title: 'New access request',
+      message: `${view.requesterName ?? 'A healthcare provider'} is asking to view: ${view.sections.map(sectionLabel).join(', ')}.`,
+      priority: 'normal',
+      actionUrl: '/mother/access-requests',
+      dedupeKey: `consent:${view.id}:requested`,
+    });
+    return view;
   } catch (error) {
     if ((error as { code?: string }).code === '23505') {
       throw new AuthError('You already have a pending request for this patient. Wait for her response.', 409);
@@ -320,7 +343,25 @@ async function respond(motherId: string, requestId: string, approve: boolean): P
   }
 
   const row = await pool.query<ConsentRow>(`${SELECT_VIEW} WHERE cr.id = $1 AND cr.mother_id = $2`, [requestId, motherId]);
-  return toView(row.rows[0]);
+  const decided = row.rows[0];
+
+  // Tell the requester (recipient = requester_id stored on the request).
+  const mother = await pool.query<{ name: string }>('SELECT name FROM users WHERE id = $1', [motherId]);
+  const motherName = mother.rows[0]?.name ?? 'The patient';
+  await notify({
+    recipientUserId: decided.requester_id,
+    kind: 'consent',
+    type: approve ? 'CONSENT_APPROVED' : 'CONSENT_DENIED',
+    title: approve ? 'Access approved' : 'Access denied',
+    message: approve
+      ? `${motherName} approved access to ${decided.requested_sections.map(sectionLabel).join(', ')} for ${ACCESS_DURATION_MINUTES} minutes.`
+      : `${motherName} denied your access request.`,
+    priority: approve ? 'urgent' : 'normal',
+    actionUrl: decided.requester_type === 'hospital' ? '/hospital/scan-qr' : '/doctor/scan-qr',
+    dedupeKey: `consent:${decided.id}:${approve ? 'approved' : 'denied'}`,
+  });
+
+  return toView(decided);
 }
 
 export const approveConsentRequest = (motherId: string, requestId: string) => respond(motherId, requestId, true);
