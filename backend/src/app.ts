@@ -10,6 +10,18 @@ dotenv.config();
 
 const app = express();
 
+const isProduction = process.env.NODE_ENV === 'production';
+
+// Behind Render's proxy every request arrives from the proxy's address, so
+// without this the rate limiters would treat all users as one client.
+// TRUST_PROXY = number of proxy hops (default 1 in production, off locally).
+const trustProxy = Number(process.env.TRUST_PROXY ?? (isProduction ? 1 : 0));
+if (trustProxy > 0) app.set('trust proxy', trustProxy);
+
+if (isProduction && !process.env.FRONTEND_URL) {
+  throw new Error('FRONTEND_URL must be set in production (exact origin of the deployed frontend).');
+}
+
 // FRONTEND_URL may hold several comma-separated origins (e.g. the LAN address
 // and localhost during development). Only exact matches are allowed.
 const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173')

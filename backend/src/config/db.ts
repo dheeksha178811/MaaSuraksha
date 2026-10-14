@@ -16,5 +16,6 @@ types.setTypeParser(1082, (value: string) => value);
 
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  // Verify Neon's certificate chain (publicly trusted) to prevent MITM.
+  ssl: { rejectUnauthorized: true },
 });

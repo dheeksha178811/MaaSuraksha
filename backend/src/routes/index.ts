@@ -27,6 +27,9 @@ router.use('/qr', qrRoutes);
 router.use('/consent', consentRoutes);
 router.use('/referrals', referralRoutes);
 router.use('/notifications', notificationRoutes);
-router.use('/test', testRoutes);
+// Scaffolding-only auth probes; not exposed in production.
+if (process.env.NODE_ENV !== 'production') {
+  router.use('/test', testRoutes);
+}
 
 export default router;
