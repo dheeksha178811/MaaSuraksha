@@ -4,6 +4,11 @@ import { validateProfileByRole, validateProfileUpdateByRole } from './profileVal
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const VALID_ROLES = ['mother', 'doctor', 'hospital', 'admin'];
 const MIN_PASSWORD_LENGTH = 8;
+// Roles anyone may self-register as. doctor / hospital / admin grant access to
+// other people's clinical data, so they are never created from an anonymous
+// request — they are provisioned out of band (see seedDemoData.ts / direct DB
+// provisioning) until a verified onboarding workflow exists.
+const PUBLIC_REGISTRATION_ROLES = ['mother'];
 
 export function validateRegister(req: Request, res: Response, next: NextFunction) {
   const { email, password, name, role, phone, profile } = req.body ?? {};
@@ -28,10 +33,23 @@ export function validateRegister(req: Request, res: Response, next: NextFunction
     errors.push('profile must be an object.');
   }
 
+  const privilegedRole =
+    typeof role === 'string' && VALID_ROLES.includes(role) && !PUBLIC_REGISTRATION_ROLES.includes(role);
+
   // Only validate profile fields once the role itself is known to be valid —
   // otherwise we'd be validating against the wrong shape.
   if (role && typeof role === 'string' && VALID_ROLES.includes(role)) {
     errors.push(...validateProfileByRole(role, profile));
+  }
+
+  // Always refused, regardless of any other field, and
+  // before anything touches the database.
+  if (privilegedRole) {
+    res.status(403).json({
+      success: false,
+      message: 'This account type cannot be created through public registration. Please contact MaaSuraksha support.',
+    });
+    return;
   }
 
   if (errors.length > 0) {

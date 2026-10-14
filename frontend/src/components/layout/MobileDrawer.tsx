@@ -16,7 +16,7 @@ export interface MobileDrawerProps {
 
 export const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose, badges = {} }) => {
   const location = useLocation();
-  const { role } = useMockAuth();
+  const { role, logout } = useMockAuth();
   const {
     items: navItems,
     bottomItems: bottomNavItems,
@@ -112,6 +112,7 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose, bad
               <NavLink
                 key={item.title}
                 to={item.href}
+                onClick={item.title === 'Logout' ? logout : undefined}
                 className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-warm-muted hover:bg-white/60 hover:text-sandal-900 transition-colors"
               >
                 <Icon className="w-5 h-5 shrink-0" />

@@ -20,7 +20,6 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
 import { useMockAuth } from '@/hooks/useMockAuth';
-import { AuthNetworkError } from '@/services/authApi';
 import { getSafeReturnPath } from '@/utils/returnPath';
 
 export const LoginPage: React.FC = () => {
@@ -29,7 +28,7 @@ export const LoginPage: React.FC = () => {
   // only in-app navigation can set it, and still checked against a strict
   // internal-path pattern before use.
   const returnTo = getSafeReturnPath((useLocation().state as { from?: unknown } | null)?.from);
-  const { loginAsRole, loginWithCredentials } = useMockAuth();
+  const { loginWithCredentials } = useMockAuth();
 
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const [email, setEmail] = useState<string>('ananya.kapoor@example.com');
@@ -68,15 +67,9 @@ export const LoginPage: React.FC = () => {
       const realUser = await loginWithCredentials(email, password);
       navigate(returnTo ?? ROLE_CONFIGS[realUser.role].defaultPath);
     } catch (error) {
-      if (error instanceof AuthNetworkError) {
-        // Backend unreachable — fall back to the mock flow for the
-        // originally selected role, same as before real auth existed.
-        loginAsRole(selectedRole);
-        navigate(ROLE_CONFIGS[selectedRole].defaultPath);
-        return;
-      }
-      // Backend reachable but login failed (bad credentials, etc) —
-      // surface it rather than silently granting mock access.
+      // Any failure (bad credentials, rate limit, backend unreachable) is
+      // shown as an error. No session is ever created without a successful
+      // response from the backend.
       setLoginError(error instanceof Error ? error.message : 'Unable to sign in. Please try again.');
       setIsLoading(false);
     }
@@ -126,7 +119,7 @@ export const LoginPage: React.FC = () => {
 
           <div className="text-center text-xs text-warm-muted flex items-center justify-center gap-1">
             <HelpCircle className="w-4 h-4 text-sandal-400" />
-            <span>Select any role above to enter the corresponding mock workspace.</span>
+            <span>Select your role above to sign in.</span>
           </div>
         </div>
       ) : (
@@ -143,7 +136,7 @@ export const LoginPage: React.FC = () => {
                     {ROLE_CONFIGS[selectedRole].title}
                   </h3>
                   <span className="text-[11px] text-sandal-600 font-semibold block">
-                    Mock Authentication Flow
+                    Secure Sign-in
                   </span>
                 </div>
               </div>
@@ -184,7 +177,7 @@ export const LoginPage: React.FC = () => {
               <div className="p-3 rounded-xl bg-warm-cream/70 border border-sandal-100 text-xs text-warm-muted flex items-start gap-2">
                 <CheckCircle className="w-4 h-4 text-sage-text shrink-0 mt-0.5" />
                 <span>
-                  <strong>Module 0 Notice:</strong> Signs in against the live MaaSuraksha server; if it's unreachable, this falls back to the {ROLE_CONFIGS[selectedRole].title} mock workspace.
+                  Signs in against the live MaaSuraksha server. If it can't be reached, you'll see an error and no session is started.
                 </span>
               </div>
 

@@ -21,7 +21,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   badges = {},
 }) => {
   const location = useLocation();
-  const { role } = useMockAuth();
+  const { role, logout } = useMockAuth();
   const { items: navItems, bottomItems: bottomNavItems, sectionLabel } = getNavConfigForRole(role);
 
   return (
@@ -142,6 +142,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <NavLink
               key={item.title}
               to={item.href}
+              onClick={item.title === 'Logout' ? logout : undefined}
               title={isCollapsed ? item.title : undefined}
               className={cn(
                 'group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150',

@@ -20,7 +20,7 @@ const MOCK_USERS_BY_ROLE: Record<UserRole, BaseUser> = {
 // signed-in role is auth-adjacent session state, so it must stay isolated
 // per tab too, not just the token itself, or a stale value here would still
 // leak the wrong role across tabs even after the token was isolated.
-const ROLE_STORAGE_KEY = 'maasuraksha_mock_role';
+export const ROLE_STORAGE_KEY = 'maasuraksha_mock_role';
 
 // Merges the real backend identity fields onto the existing per-role mock
 // object, so every other field that non-identity pages/components still

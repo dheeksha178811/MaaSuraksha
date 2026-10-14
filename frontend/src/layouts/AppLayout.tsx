@@ -10,7 +10,7 @@ import { useSidebarBadges } from '@/hooks/useSidebarBadges';
 
 export const AppLayout: React.FC = () => {
   const { isCollapsed, toggleCollapse, isMobileOpen, openMobile, closeMobile } = useSidebar();
-  const { role, loginAsRole } = useMockAuth();
+  const { role } = useMockAuth();
   // Computed once here and passed to both nav renderers below, so Sidebar
   // and MobileDrawer (both always mounted, just CSS-hidden at different
   // breakpoints) never each fetch independently.
@@ -38,7 +38,6 @@ export const AppLayout: React.FC = () => {
         <Header
           onOpenMobileMenu={openMobile}
           currentRole={role}
-          onSwitchRole={loginAsRole}
         />
 
         {/* Dynamic Page Content */}

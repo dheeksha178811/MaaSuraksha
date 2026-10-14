@@ -97,15 +97,15 @@ export const RegisterPage: React.FC = () => {
         <p className="text-sm sm:text-base text-warm-muted leading-relaxed">
           {selectedRole
             ? `Set up your ${ROLE_CONFIGS[selectedRole].title} account to get started.`
-            : 'Choose your role to begin creating a real MaaSuraksha account.'}
+            : 'Create your MaaSuraksha mother account to begin.'}
         </p>
       </div>
 
       {/* STEP 1: Select Role */}
       {!selectedRole ? (
         <div className="space-y-8 animate-in fade-in duration-300">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            {(['mother', 'doctor', 'hospital', 'admin'] as UserRole[]).map((roleKey) => {
+          <div className="grid grid-cols-1 max-w-xs mx-auto gap-4">
+            {(['mother'] as UserRole[]).map((roleKey) => {
               const cfg = ROLE_CONFIGS[roleKey];
               const Icon = roleIcons[roleKey];
               return (
@@ -122,6 +122,11 @@ export const RegisterPage: React.FC = () => {
               );
             })}
           </div>
+
+          <p className="text-center text-xs text-warm-muted max-w-md mx-auto">
+            Doctor, hospital and administrator accounts cannot be created here. They are set up by MaaSuraksha
+            administrators after verification.
+          </p>
 
           <div className="text-center text-xs text-warm-muted">
             Already have an account?{' '}

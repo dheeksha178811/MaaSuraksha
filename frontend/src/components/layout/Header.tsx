@@ -4,7 +4,6 @@ import {
   Menu,
   ChevronDown,
   User,
-  Shield,
   LogOut,
 } from 'lucide-react';
 import { Breadcrumb } from '@/components/ui/Breadcrumb';
@@ -17,17 +16,15 @@ import { useMockAuth } from '@/hooks/useMockAuth';
 export interface HeaderProps {
   onOpenMobileMenu?: () => void;
   currentRole?: UserRole;
-  onSwitchRole?: (role: UserRole) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   onOpenMobileMenu,
   currentRole = 'mother',
-  onSwitchRole,
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useMockAuth();
+  const { user, logout } = useMockAuth();
 
   const profileRouteByRole: Record<UserRole, string> = {
     mother: '/mother/profile',
@@ -77,19 +74,13 @@ export const Header: React.FC<HeaderProps> = ({
       onClick: () => navigate(profileRouteByRole[currentRole]),
     },
     {
-      id: 'role-switch',
-      label: 'Switch Role (Mock Demo)',
-      icon: <Shield className="w-4 h-4" />,
-      onClick: () => navigate('/auth/login'),
-    },
-    {
       id: 'logout',
       label: 'Log Out',
       icon: <LogOut className="w-4 h-4" />,
       danger: true,
       divider: true,
       onClick: () => {
-        if (onSwitchRole) onSwitchRole('mother');
+        logout();
         navigate('/auth/login');
       },
     },
