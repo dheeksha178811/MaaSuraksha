@@ -24,3 +24,4 @@ export * from './doctorNotification';
 export * from './doctorSettings';
 export * from './hospitalOperations';
 export * from './adminOperations';
+export * from './maternalRisk';

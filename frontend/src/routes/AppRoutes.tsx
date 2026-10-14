@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { PublicLayout } from '@/layouts/PublicLayout';
+import { RequireAuth } from '@/components/auth/RequireAuth';
 import { AppLayout } from '@/layouts/AppLayout';
 import { LandingPage } from '@/pages/landing/LandingPage';
 import { LoginPage } from '@/pages/auth/LoginPage';
@@ -27,6 +28,7 @@ import { NotFoundPage } from '@/pages/common/NotFoundPage';
 import { DoctorDashboardPage } from '@/pages/doctor/DoctorDashboardPage';
 import { MyPatientsPage } from '@/pages/doctor/MyPatientsPage';
 import { PatientCareWorkspacePage } from '@/pages/doctor/PatientCareWorkspacePage';
+import { MaternalRiskPage } from '@/pages/doctor/MaternalRiskPage';
 import { DoctorAppointmentsPage } from '@/pages/doctor/DoctorAppointmentsPage';
 import { DoctorReportsPage } from '@/pages/doctor/DoctorReportsPage';
 import { DoctorCarePlansPage } from '@/pages/doctor/DoctorCarePlansPage';
@@ -74,6 +76,7 @@ export const AppRoutes: React.FC = () => {
       </Route>
 
       {/* Main Care Shell / Protected Style Routes */}
+      <Route element={<RequireAuth />}>
       <Route element={<AppLayout />}>
         {/* Mother Space Routes */}
         <Route path="/mother/dashboard" element={<MotherDashboardPreview />} />
@@ -103,6 +106,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/doctor/dashboard" element={<DoctorDashboardPage />} />
         <Route path="/doctor/patients" element={<MyPatientsPage />} />
         <Route path="/doctor/patients/:patientId" element={<PatientCareWorkspacePage />} />
+        <Route path="/doctor/maternal-risk" element={<MaternalRiskPage />} />
         <Route path="/doctor/appointments" element={<DoctorAppointmentsPage />} />
         <Route path="/doctor/reports" element={<DoctorReportsPage />} />
         <Route path="/doctor/care-plans" element={<DoctorCarePlansPage />} />
@@ -141,6 +145,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/admin/alerts" element={<AdminAlertsPage />} />
         <Route path="/admin/settings" element={<AdminSettingsPage />} />
         <Route path="/admin/profile" element={<AdminPlaceholderPage />} />
+      </Route>
       </Route>
 
       {/* Catch-all Not Found Route */}

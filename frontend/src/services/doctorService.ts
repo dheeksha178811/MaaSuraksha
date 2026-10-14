@@ -31,6 +31,9 @@ import {
   DoctorPrivacySecurityPreferences,
   DoctorProfileFormValues,
   DoctorWorkspacePreferences,
+  MaternalRiskAnalytics,
+  PatientHealthTrends,
+  RiskReviewDecision,
   PatientRiskLevel,
   PatientStage,
   PatientStatus,
@@ -581,4 +584,45 @@ export async function uploadReport(patientId: string, input: UploadReportInput):
   formData.append('file', input.file);
   const body = await authedUpload(`/doctor/patients/${patientId}/reports`, formData);
   return toReport(body.report as DoctorReportRowShape);
+}
+
+// --- Maternal Risk & Progress -------------------------------------------------
+// Backed by /api/doctor/analytics/maternal-risk and the per-patient
+// health-trends / vitals / warning-signs / flag-reviews routes
+// (backend/src/services/maternalRiskService.ts). The API responds in
+// camelCase, so no row mapping is needed. patientId is a
+// patient_care_records id, re-verified against this doctor on the server.
+
+export async function getMaternalRiskAnalytics(weeks: number): Promise<MaternalRiskAnalytics> {
+  const body = await get(`/doctor/analytics/maternal-risk?weeks=${weeks}`);
+  return body.analytics as MaternalRiskAnalytics;
+}
+
+export async function getPatientHealthTrends(patientId: string): Promise<PatientHealthTrends> {
+  const body = await get(`/doctor/patients/${patientId}/health-trends`);
+  return body.trends as PatientHealthTrends;
+}
+
+const postJson = (path: string, payload: unknown) =>
+  authedFetch(path, { method: 'POST', body: JSON.stringify(payload) });
+
+export async function recordBloodPressure(
+  patientId: string,
+  input: { systolic: number; diastolic: number; notes?: string }
+): Promise<void> {
+  await postJson(`/doctor/patients/${patientId}/vitals`, input);
+}
+
+export async function recordWarningSign(
+  patientId: string,
+  input: { signCode: string; notes?: string }
+): Promise<void> {
+  await postJson(`/doctor/patients/${patientId}/warning-signs`, input);
+}
+
+export async function reviewRiskFlag(
+  patientId: string,
+  input: { flagKey: string; decision: RiskReviewDecision; note?: string }
+): Promise<void> {
+  await postJson(`/doctor/patients/${patientId}/flag-reviews`, input);
 }

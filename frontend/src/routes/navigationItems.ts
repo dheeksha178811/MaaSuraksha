@@ -171,6 +171,12 @@ export const DOCTOR_NAV_ITEMS: NavItem[] = [
     isPlaceholder: false,
   },
   {
+    title: 'Maternal Risk & Progress',
+    href: '/doctor/maternal-risk',
+    icon: HeartPulse,
+    isPlaceholder: false,
+  },
+  {
     title: 'Appointments',
     href: '/doctor/appointments',
     icon: CalendarCheck,
